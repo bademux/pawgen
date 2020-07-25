@@ -1,0 +1,15 @@
+Thumbs.dbpawet_pure_java
+.DS_Store
+.gradle
+build/
+target/
+out/
+.idea
+*.iml
+*.ipr
+*.iws
+.project
+.settings
+.classpath
+output.zip
+pawet.net.zip

@@ -1,0 +1,88 @@
+plugins {
+	id 'application'
+	id 'groovy'
+	id 'com.palantir.graal' version '0.7.1'
+	id 'com.palantir.git-version' version '0.12.3'
+	id 'org.beryx.jlink' version '2.21.0'
+}
+
+group 'net.pawet.pawetphp'
+def details = versionDetails()
+version "${details.lastTag}.${details.commitDistance}-${details.gitHash}"
+
+repositories {
+	mavenCentral()
+	jcenter()
+}
+
+def generatedDir = "$buildDir/generated/src/java"
+
+task generateJava() {
+	def buildFile = new File("$generatedDir/build/Build.java")
+	mkdir buildFile.parentFile
+	doFirst {
+		buildFile.text = "package build; public interface Build { String VERSION = \"${project.version}\"; }"
+	}
+}
+
+sourceSets.main.java.srcDir generatedDir
+compileJava.dependsOn generateJava
+
+compileJava {
+	sourceCompatibility = JavaVersion.VERSION_11
+	targetCompatibility = JavaVersion.VERSION_11
+}
+
+application {
+	mainClassName 'net.pawet.pawgen.Application'
+	applicationName 'pawgen'
+}
+
+java {
+	//enable Java Modules
+	modularity.inferModulePath = true
+}
+
+graal {
+	graalVersion '20.1.0'
+	mainClass application.mainClassName
+	outputName application.applicationName
+	javaVersion compileJava.targetCompatibility
+	option '-H:+ReportExceptionStackTraces'
+	option '-H:+TraceClassInitialization'
+	option '--no-fallback'
+}
+
+jar {
+	manifest {
+		attributes 'Main-Class': application.mainClassName
+		attributes 'Version': project.version
+	}
+}
+
+jlink {
+	options = ['--compress', '2', '--no-header-files', '--no-man-pages']
+	jpackage {
+		installerName = 'Pawgen Installer'
+		installerType = 'deb'
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
+
+dependencies {
+	compileOnly "org.projectlombok:lombok:$lombokVersion"
+	annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+	implementation "org.slf4j:slf4j-api:1.7.26"
+	implementation 'org.slf4j:slf4j-simple:1.7.30'
+	implementation 'com.github.spullara.mustache.java:compiler:0.9.6'
+
+	testCompileOnly "org.projectlombok:lombok:$lombokVersion"
+	testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+	testImplementation "org.spockframework:spock-core:2.0-M3-groovy-3.0"
+	testImplementation "com.github.marschall:memoryfilesystem:2.1.0"
+}
