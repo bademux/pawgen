@@ -13,3 +13,7 @@ out/
 .classpath
 output.zip
 pawet.net.zip
+*.log
+*.lck
+/config.properties
+/simplelogger.properties

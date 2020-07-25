@@ -1,0 +1,39 @@
+{
+  "id" : "16399811-c469-458e-a787-1e1733c2fc1a",
+  "name" : "sites_ffb9e628-4835-4b68-ab2a-5bfdd0b42348_deploys",
+  "request" : {
+    "url" : "/sites/ffb9e628-4835-4b68-ab2a-5bfdd0b42348/deploys?title=pawgen_deployer",
+    "method" : "POST",
+    "bodyPatterns" : [ {
+      "equalToJson" : "{\"async\":true,\"files\":{\"image.bmp\":\"3e13ae8f8c4cffe0d2f8a3b37dbd3ff804e2c182\",\"files/staticFile.bin\":\"a94a8fe5ccb19ba61c4c0873d391e987982fbbd3\",\"Main.html\":\"94de541ed98bf4a7d97b666eebac3c4eb16baf52\",\"Галоўная.html\":\"94de541ed98bf4a7d97b666eebac3c4eb16baf52\"}}",
+      "ignoreArrayOrder" : true,
+      "ignoreExtraElements" : true
+    } ]
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\"id\":\"601d0509bf0a36a052eb0813\",\"site_id\":\"ffb9e628-4835-4b68-ab2a-5bfdd0b42348\",\"build_id\":null,\"state\":\"preparing\",\"name\":\"pawet-test\",\"url\":\"http://pawet-test.netlify.app\",\"ssl_url\":\"https://pawet-test.netlify.app\",\"admin_url\":\"https://app.netlify.com/sites/pawet-test\",\"deploy_url\":\"http://601d0509bf0a36a052eb0813--pawet-test.netlify.app\",\"deploy_ssl_url\":\"https://601d0509bf0a36a052eb0813--pawet-test.netlify.app\",\"created_at\":\"2021-02-05T08:42:49.541Z\",\"updated_at\":\"2021-02-05T08:42:49.589Z\",\"user_id\":\"5bd5c3b5c965920d3f0000a5\",\"error_message\":null,\"required\":[],\"required_functions\":null,\"commit_ref\":null,\"review_id\":null,\"branch\":null,\"commit_url\":null,\"skipped\":null,\"locked\":null,\"log_access_attributes\":{\"type\":\"firebase\",\"url\":\"https://netlify-builds4.firebaseio.com/deploys/601d0509bf0a36a052eb0813/log\",\"endpoint\":\"https://netlify-builds4.firebaseio.com\",\"path\":\"/deploys/601d0509bf0a36a052eb0813/log\",\"token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2IjowLCJpYXQiOjE2MTI1MTQ1NjksImQiOnsidWlkIjoiIn19.lokOwYH5TojmVR33wYVhUzUGwc94ZBDvKRPOj4QTXRA\"},\"title\":\"pawgen_deployer\",\"review_url\":null,\"published_at\":null,\"context\":\"production\",\"deploy_time\":null,\"available_functions\":[],\"screenshot_url\":null,\"site_capabilities\":{\"title\":\"Netlify Team Free\",\"asset_acceleration\":true,\"form_processing\":true,\"cdn_propagation\":\"partial\",\"build_node_pool\":\"buildbot-external-ssd\",\"domain_aliases\":true,\"secure_site\":false,\"prerendering\":true,\"proxying\":true,\"ssl\":\"custom\",\"rate_cents\":0,\"yearly_rate_cents\":0,\"ipv6_domain\":\"cdn.makerloop.com\",\"branch_deploy\":true,\"managed_dns\":true,\"geo_ip\":true,\"split_testing\":true,\"id\":\"nf_team_dev\",\"cdn_tier\":\"reg\"},\"committer\":null,\"skipped_log\":null,\"manual_deploy\":true,\"file_tracking_optimization\":true,\"plugin_state\":\"none\",\"has_edge_handlers\":false,\"links\":{\"permalink\":\"https://601d0509bf0a36a052eb0813--pawet-test.netlify.app\",\"alias\":\"https://pawet-test.netlify.app\"}}",
+    "headers" : {
+      "Cache-Control" : "max-age=0, private, must-revalidate",
+      "Content-Type" : "application/json; charset=utf-8",
+      "Date" : "Fri, 05 Feb 2021 08:42:49 GMT",
+      "Etag" : "W/\"e6d5f88fdfeb218c908f518b77155daf\"",
+      "Retry-After" : "2021-02-05 08:43:49 UTC",
+      "Strict-Transport-Security" : "max-age=31536000; includeSubDomains; preload",
+      "Vary" : "Origin",
+      "X-Content-Type-Options" : "nosniff",
+      "X-Frame-Options" : "ALLOWALL",
+      "X-Nf-Srv-Version" : "91d6a52",
+      "X-Ratelimit-Limit" : "500",
+      "X-Ratelimit-Remaining" : "498",
+      "X-Ratelimit-Reset" : "2021-02-05 08:43:49 UTC",
+      "X-Request-Id" : "3ef6f2ed-172f-45d7-89e5-91f0da3002d7",
+      "X-Runtime" : "0.089726",
+      "Via" : "1.1 google",
+      "Alt-Svc" : "clear"
+    }
+  },
+  "uuid" : "16399811-c469-458e-a787-1e1733c2fc1a",
+  "persistent" : true,
+  "insertionIndex" : 2
+}

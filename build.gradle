@@ -1,27 +1,25 @@
 plugins {
 	id 'application'
 	id 'groovy'
-	id 'com.palantir.graal' version '0.7.1'
+	id 'org.graalvm.buildtools.native' version '0.9.9'
 	id 'com.palantir.git-version' version '0.12.3'
-	id 'org.beryx.jlink' version '2.21.0'
 }
 
-group 'net.pawet.pawetphp'
-def details = versionDetails()
-version "${details.lastTag}.${details.commitDistance}-${details.gitHash}"
+def details = versionDetails(prefix: 'v@')
+version "${details.lastTag}.${details.commitDistance}-${details.gitHash}" as String
 
 repositories {
 	mavenCentral()
-	jcenter()
 }
 
-def generatedDir = "$buildDir/generated/src/java"
+def generatedDir = file("$buildDir/generated/src/java")
 
 task generateJava() {
-	def buildFile = new File("$generatedDir/build/Build.java")
-	mkdir buildFile.parentFile
-	doFirst {
-		buildFile.text = "package build; public interface Build { String VERSION = \"${project.version}\"; }"
+	outputs.dir generatedDir
+	doLast {
+		def genFile = file("$generatedDir/build/Build.java")
+		mkdir genFile.parentFile
+		genFile.text = "package build; public interface Build { String VERSION = \"$project.version\"; }"
 	}
 }
 
@@ -29,60 +27,85 @@ sourceSets.main.java.srcDir generatedDir
 compileJava.dependsOn generateJava
 
 compileJava {
-	sourceCompatibility = JavaVersion.VERSION_11
-	targetCompatibility = JavaVersion.VERSION_11
-}
-
-application {
-	mainClassName 'net.pawet.pawgen.Application'
-	applicationName 'pawgen'
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
 }
 
 java {
-	//enable Java Modules
 	modularity.inferModulePath = true
 }
 
-graal {
-	graalVersion '20.1.0'
-	mainClass application.mainClassName
-	outputName application.applicationName
-	javaVersion compileJava.targetCompatibility
-	option '-H:+ReportExceptionStackTraces'
-	option '-H:+TraceClassInitialization'
-	option '--no-fallback'
+application {
+	mainClass.set('net.pawet.pawgen.Application')
+	applicationName 'pawgen'
 }
 
 jar {
 	manifest {
-		attributes 'Main-Class': application.mainClassName
-		attributes 'Version': project.version
+		attributes = ['Main-Class': application.mainClass.get(), 'Version': project.version]
 	}
 }
 
-jlink {
-	options = ['--compress', '2', '--no-header-files', '--no-man-pages']
-	jpackage {
-		installerName = 'Pawgen Installer'
-		installerType = 'deb'
+graalvmNative {
+	toolchainDetection = true
+	testSupport = false
+	binaries {
+		main {
+			// Main options
+			debug.set(true) // Determines if debug info should be generated, defaults to false
+			verbose.set(true) // Add verbose output, defaults to false
+			fallback.set(false) // Sets the fallback mode of native-image, defaults to false
+
+			// Advanced options
+			buildArgs '--install-exit-handlers', '--native-image-info'/*, '--static', '--report-unsupported-elements-at-runtime'*/
+			// Passes '-H:Extra' to the native image builder options. This can be used to pass parameters which are not directly supported by this extension
+			// Runtime options
+			runtimeArgs '--help' // Passes '--help' to built image, during "nativeRun" task
+			// Development options
+			agent.enabled.set(false) // Enables the reflection agent. Can be also set on command line using '-Pagent'
+		}
 	}
+}
+
+configurations {
+	fatJar.extendsFrom implementation
+}
+
+task fatJar(type: Jar) {
+	group 'Build'
+	manifest.attributes tasks.jar.manifest.attributes
+	archiveBaseName.set("$project.name-full")
+	from(
+		{ configurations.fatJar.collect({ it.isDirectory() ? it : zipTree(it) }) },
+		{ it.excludes = ['*.md', 'module-info.class'] }
+	)
+	with jar
+	duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 test {
 	useJUnitPlatform()
 }
 
+
 dependencies {
-	compileOnly "org.projectlombok:lombok:$lombokVersion"
-	annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
+	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-jpeg', version: twelvemonkeysVersion
+	implementation group: 'jakarta.json', name: 'jakarta.json-api', version: jakartajsonVersion
+	implementation group: 'org.glassfish', name: 'jakarta.json', version: jakartajsonVersion, classifier: 'module'
+	implementation group: 'org.slf4j', name: 'slf4j-simple', version: slf4jVersion
+	implementation group: 'org.slf4j', name: 'jul-to-slf4j', version: slf4jVersion
 
-	implementation "org.slf4j:slf4j-api:1.7.26"
-	implementation 'org.slf4j:slf4j-simple:1.7.30'
-	implementation 'com.github.spullara.mustache.java:compiler:0.9.6'
+	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 
-	testCompileOnly "org.projectlombok:lombok:$lombokVersion"
-	testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"
-
-	testImplementation "org.spockframework:spock-core:2.0-M3-groovy-3.0"
-	testImplementation "com.github.marschall:memoryfilesystem:2.1.0"
+	testImplementation enforcedPlatform(group: 'org.spockframework', name: 'spock-bom', version: spockVersion)
+	testImplementation group: 'org.spockframework', name: 'spock-core'
+	testImplementation group: 'net.bytebuddy', name: 'byte-buddy'
+	testImplementation group: 'org.objenesis', name: 'objenesis'
+	testImplementation group: 'com.google.jimfs', name: 'jimfs', version: memoryfilesystemVersion
+	testImplementation group: 'com.github.tomakehurst', name: 'wiremock-jre8', version: wiremockVersion
 }
+

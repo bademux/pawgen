@@ -1,0 +1,34 @@
+{
+  "id" : "baef6f5c-6553-4743-9a8d-67372d0c47bc",
+  "name" : "sites_ffb9e628-4835-4b68-ab2a-5bfdd0b42348_files",
+  "request" : {
+    "url" : "/sites/ffb9e628-4835-4b68-ab2a-5bfdd0b42348/files",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "[{\"id\":\"/main.html\",\"path\":\"/main.html\",\"sha\":\"94de541ed98bf4a7d97b666eebac3c4eb16baf52\",\"mime_type\":\"text/html\",\"size\":33,\"site_id\":\"ffb9e628-4835-4b68-ab2a-5bfdd0b42348\",\"deploy_id\":\"601d0509bf0a36a052eb0813\"},{\"id\":\"/галоўная.html\",\"path\":\"/галоўная.html\",\"sha\":\"94de541ed98bf4a7d97b666eebac3c4eb16baf52\",\"mime_type\":\"text/html\",\"size\":33,\"site_id\":\"ffb9e628-4835-4b68-ab2a-5bfdd0b42348\",\"deploy_id\":\"601d0509bf0a36a052eb0813\"},{\"id\":\"/image.bmp\",\"path\":\"/image.bmp\",\"sha\":\"3e13ae8f8c4cffe0d2f8a3b37dbd3ff804e2c182\",\"mime_type\":\"image/bmp\",\"size\":3834,\"site_id\":\"ffb9e628-4835-4b68-ab2a-5bfdd0b42348\",\"deploy_id\":\"601d0509bf0a36a052eb0813\"},{\"id\":\"/files/staticfile.bin\",\"path\":\"/files/staticfile.bin\",\"sha\":\"a94a8fe5ccb19ba61c4c0873d391e987982fbbd3\",\"mime_type\":\"application/x-sega-cd-rom\",\"size\":4,\"site_id\":\"ffb9e628-4835-4b68-ab2a-5bfdd0b42348\",\"deploy_id\":\"601d0509bf0a36a052eb0813\"}]",
+    "headers" : {
+      "Cache-Control" : "max-age=0, private, must-revalidate",
+      "Content-Type" : "application/json; charset=utf-8",
+      "Date" : "Fri, 05 Feb 2021 08:42:52 GMT",
+      "Etag" : "W/\"b117be62eedd2c145cfb167015dbdf46\"",
+      "Retry-After" : "2021-02-05 08:43:52 UTC",
+      "Strict-Transport-Security" : "max-age=31536000; includeSubDomains; preload",
+      "Vary" : "Origin",
+      "X-Content-Type-Options" : "nosniff",
+      "X-Frame-Options" : "ALLOWALL",
+      "X-Nf-Srv-Version" : "91d6a52",
+      "X-Ratelimit-Limit" : "500",
+      "X-Ratelimit-Remaining" : "495",
+      "X-Ratelimit-Reset" : "2021-02-05 08:43:52 UTC",
+      "X-Request-Id" : "decb47e0-b5ab-4247-a6d0-4126fbafb04c",
+      "X-Runtime" : "0.028818",
+      "Via" : "1.1 google",
+      "Alt-Svc" : "clear"
+    }
+  },
+  "uuid" : "baef6f5c-6553-4743-9a8d-67372d0c47bc",
+  "persistent" : true,
+  "insertionIndex" : 5
+}

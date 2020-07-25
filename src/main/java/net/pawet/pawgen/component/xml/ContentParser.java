@@ -1,12 +1,13 @@
 package net.pawet.pawgen.component.xml;
 
+import lombok.Cleanup;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.ArticleHeader;
 import net.pawet.pawgen.component.Category;
-import net.pawet.pawgen.component.Storage;
-import net.pawet.pawgen.component.img.ImageParser;
+import net.pawet.pawgen.component.resource.ResourceFactory;
+import net.pawet.pawgen.component.system.storage.Storage;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
@@ -17,9 +18,11 @@ import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 import java.io.Writer;
-import java.util.*;
-import java.util.function.Predicate;
+import java.util.Iterator;
+import java.util.Optional;
+import java.util.Set;
 
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toMap;
 import static net.pawet.pawgen.component.xml.XmlUtils.createXMLEventReader;
 import static net.pawet.pawgen.component.xml.XmlUtils.getWithPrefix;
@@ -31,27 +34,23 @@ public class ContentParser {
 	public static final Set<String> ROOT_TAG_NAMES = Set.of("article", "gallery");
 
 	private final Storage storage;
-	private final ImageParser imageParser;
+	private final ResourceFactory resourceFactory;
 
 	public CharSequence read(ArticleHeader header) {
+		resourceFactory.createAttachmentResource(header.getFile());
 		return read(header.getCategory(), header.getTitle());
 	}
 
 	@SneakyThrows
 	CharSequence read(Category category, String title) {
-		XMLEventReader xmlr = null;
-		try (var inputStream = storage.inputStream(category, "index.xml")) {
-			xmlr = createXMLEventReader(inputStream);
-			return new XmlArticle(category, title).read(xmlr);
-		} finally {
-			if (xmlr != null) {
-				xmlr.close();
-			}
+		try (var is = storage.read(category.resolve("index.xml"))) {
+			@Cleanup var xmlr = createXMLEventReader(is);
+			return new ArticleContent(category, title).read(xmlr);
 		}
 	}
 
 	@RequiredArgsConstructor
-	private final class XmlArticle {
+	private final class ArticleContent {
 
 		private final Category category;
 		private final String title;
@@ -112,15 +111,15 @@ public class ContentParser {
 					String name = qName.getLocalPart();
 					sb.append('<').append(name);
 
-					Map<String, String> attributes = filter.filterAttributes(startElement::getAttributes)
-						.collect(toMap(attr -> attr.getName().getLocalPart(), Attribute::getValue, (s, s2) -> Optional.of(s).filter(Predicate.not(String::isBlank)).orElse(s2)));
-					if ("img".equals(name)) {
-						var attrs = new HashMap<>(imageParser.createImgAttributes(attributes, category));
-						attributes.forEach(attrs::putIfAbsent);
-						attributes = attrs;
-					}
+					var attributes = filter.filterAttributes(startElement.getAttributes())
+						.filter(attr -> attr.getValue() != null)
+						.filter(attr -> !attr.getValue().isEmpty())
+						.collect(toMap(
+							attr -> attr.getName().getLocalPart(), Attribute::getValue,
+							(s1, s2) -> Optional.of(s1).filter(not(String::isBlank)).orElse(s2)
+						));
 
-					attributes
+					resourceFactory.createResource(name, category, attributes)
 						.forEach((key, value) -> sb.append(' ').append(key).append("=\"").append(value).append('"'));
 
 					if (isEmptyTag(name)) {
@@ -138,35 +137,29 @@ public class ContentParser {
 				case XMLStreamConstants.CHARACTERS:
 					Characters characters = event.asCharacters();
 					if (!characters.isIgnorableWhiteSpace()) {
-						characters.writeAsEncodedUnicode(new WriterAdapter(sb));
+						characters.writeAsEncodedUnicode(new Writer() {
+							@Override
+							public void write(char[] cbuf, int off, int len) {
+								sb.append(cbuf, off, len);
+							}
+
+							@Override
+							public void flush() {
+							}
+
+							@Override
+							public void close() {
+							}
+						});
 					}
 					break;
 			}
 		}
 
-		private boolean isEmptyTag(String name) {
-			return "img".equalsIgnoreCase(name) || "hr".equalsIgnoreCase(name) || "br".equalsIgnoreCase(name);
-		}
 	}
 
-	@RequiredArgsConstructor
-	private final static class WriterAdapter extends Writer {
-
-		private final StringBuilder sb;
-
-		@Override
-		public void write(char[] cbuf, int off, int len) {
-			sb.append(cbuf, off, len);
-		}
-
-		@Override
-		public void flush() {
-		}
-
-		@Override
-		public void close() {
-		}
-
+	private static boolean isEmptyTag(String name) {
+		return "img".equalsIgnoreCase(name) || "hr".equalsIgnoreCase(name) || "br".equalsIgnoreCase(name);
 	}
 
 }

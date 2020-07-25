@@ -1,0 +1,28 @@
+{
+  "id" : "473c5d60-21a1-492d-878b-8a090abd2e5f",
+  "name" : "deploys_5fb04ca2f58291d9f179966e_files_test_file23html",
+  "request" : {
+    "url" : "/deploys/5fb04ca2f58291d9f179966e/files/test_file23.html",
+    "method" : "PUT",
+    "bodyPatterns" : [ {
+      "binaryEqualTo" : "dGVzdF9maWxlMjMuaHRtbA=="
+    } ]
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\"id\":\"test_file23.html\",\"path\":\"test_file23.html\",\"sha\":\"c5432e4859865c1071d83f46cfac45619b4d6f5b\",\"mime_type\":\"text/html; charset=utf-8\",\"size\":16}\n",
+    "headers" : {
+      "Content-Type" : "application/json",
+      "X-Concurrent-Limit" : "5",
+      "X-Concurrent-Remaining" : "4",
+      "X-Concurrent-Status" : "checked",
+      "X-Nf-Srv-Version" : "5da92b4",
+      "Date" : "Sat, 14 Nov 2020 21:31:17 GMT",
+      "Via" : "1.1 google",
+      "Alt-Svc" : "clear"
+    }
+  },
+  "uuid" : "473c5d60-21a1-492d-878b-8a090abd2e5f",
+  "persistent" : true,
+  "insertionIndex" : 5
+}

@@ -1,97 +1,59 @@
 package net.pawet.pawgen;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.ArticleHeader;
-import net.pawet.pawgen.component.Storage;
-import net.pawet.pawgen.component.img.ImageParser;
-import net.pawet.pawgen.component.render.ProcessingItem;
-import net.pawet.pawgen.component.render.Templater;
-import net.pawet.pawgen.component.system.CommandLineOptions;
-import net.pawet.pawgen.component.system.ImageProcessingExecutorService;
-import net.pawet.pawgen.component.xml.ContentParser;
-import net.pawet.pawgen.component.xml.HeaderParser;
+import net.pawet.pawgen.component.Pawgen;
+import net.pawet.pawgen.component.system.CliOptions;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.time.Clock;
-import java.util.Collection;
-import java.util.concurrent.TimeUnit;
-
-import static java.util.stream.Collectors.toUnmodifiableList;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 
 @Slf4j
-@RequiredArgsConstructor
-public class Application implements Runnable, AutoCloseable {
+public class Application {
 
-	private final ImageProcessingExecutorService imageProcessingExecutor;
-	private final HeaderParser headerParser;
-	private final ContentParser contentParser;
-	private final Templater templater;
-	private final Storage storage;
+	private final static Clock CLOCK = Clock.systemUTC();
 
-	public static void main(String[] args) {
-		Clock clock = Clock.systemUTC();
-		try {
-			long start = clock.millis();
-			CommandLineOptions config = CommandLineOptions.parse(args);
-			System.out.println("Executed with config:\n" + config);
-			Application app = Application.create(config);
-			try (app) {
-				app.run();
-			}
-			app.printImageProcessingStatus();
-			System.out.printf("Processed in %ds\n", (clock.millis() - start) / 1000);
+	public static void main(String... args) {
+		System.exit(run(handleDirectClassRun(Arrays.asList(args))));
+	}
+
+	public static int run(List<String> args) {
+		long start = CLOCK.millis();
+		var config = CliOptions.parse(args);
+		log.info("Executed with config: {}", config);
+		try (var app = Pawgen.create(config)) {
+			Runtime.getRuntime().addShutdownHook(new Thread(app::close));
+			app.render();
+			app.copyStaticResources();
+			app.timestamp();
+			log.info("Built in {} min", Duration.ofMillis(CLOCK.millis() - start).toMinutes());
+			app.deploy();
 		} catch (Throwable e) {
-			log.debug("Error: ", e);
-			CommandLineOptions.handleError(e).forEach(System.out::println);
-			e.printStackTrace();
-			System.exit(1);
+			log.error("Unrecoverable error: {}", e.getMessage(), e);
+			CliOptions.handleError(e).forEach(log::error);
+			return 1;
+		} finally {
+			log.info("Processed in {} min", Duration.ofMillis(CLOCK.millis() - start).toMinutes());
 		}
+		return 0;
 	}
 
-	static Application create(CommandLineOptions opts) {
-		var imageProcessingExecutor = new ImageProcessingExecutorService();
-		var storage = Storage.of(opts.getContentDir(), opts.getOutputDir(), opts.getStaticDir(), opts.getDateFrom());
-		var imageParser = ImageParser.of(imageProcessingExecutor, storage, opts.getWatermarkText());
-		var contentReader = ContentParser.of(storage, imageParser);
-		var templater = Templater.of(opts.getTemplatesDir());
-		Application application = new Application(imageProcessingExecutor, new HeaderParser(), contentReader, templater, storage);
-		Runtime.getRuntime().addShutdownHook(new Thread(application::close));
-		return application;
-	}
 
-	@Override
-	public void run() {
-		System.out.println("Finding articles to be processed.");
-		Collection<ArticleHeader> index = readAllArticles();
-		System.out.println("Found " + index.size() + " articles.");
-		templater.create(index, contentParser::read)
-			.peek(this::printProgress)
-			.forEach(item -> item.writeWith(storage::writer));
-		System.out.println("Processing static resources.");
-		storage.copyStaticResources();
-		System.out.println("Waiting for images to be  processed.");
-	}
-
-	private void printProgress(ProcessingItem processingItem) {
-		System.out.printf("Processing %s.\n", processingItem.getPrintableName());
-	}
-
-	private Collection<ArticleHeader> readAllArticles() {
-		try (var articles = storage.readArticles()) {
-			return articles.flatMap(headerParser::parse).collect(toUnmodifiableList());
+	private static List<String> handleDirectClassRun(List<String> args) {
+		int pos = args.indexOf(Application.class.getName());
+		if (pos != -1) {
+			return args.subList(pos + 1, args.size());
 		}
+		return args;
 	}
 
-	public void printImageProcessingStatus() throws InterruptedException {
-		do {
-			System.out.printf("%d images left.\n", imageProcessingExecutor.size());
-		} while (!imageProcessingExecutor.awaitTermination(5, TimeUnit.SECONDS));
+	static {
+		System.setProperty("java.awt.headless", Boolean.TRUE.toString());
+		SLF4JBridgeHandler.removeHandlersForRootLogger();
+		SLF4JBridgeHandler.install();
 	}
 
-	@Override
-	public void close() {
-		imageProcessingExecutor.shutdown();
-		storage.close();
-	}
 }
 

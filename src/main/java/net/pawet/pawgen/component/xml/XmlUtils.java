@@ -2,18 +2,14 @@ package net.pawet.pawgen.component.xml;
 
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
-import net.pempek.unicode.UnicodeBOMInputStream;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.EventFilter;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
-import java.io.BufferedInputStream;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.*;
 
-import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @UtilityClass
 class XmlUtils {
@@ -27,13 +23,17 @@ class XmlUtils {
 	}
 
 	@SneakyThrows
-	public static XMLEventReader createXMLEventReader(InputStream inputStream) {
-		return createXMLEventReaderRaw(new UnicodeBOMInputStream(new BufferedInputStream(inputStream)).skipBOM());
+	public static XMLEventReader createXMLEventReader(InputStream is) {
+		return factory.createXMLEventReader(skipBOM(is));
 	}
 
-	@SneakyThrows
-	static XMLEventReader createXMLEventReaderRaw(InputStream inputStream) {
-		return factory.createXMLEventReader(inputStream);
+	private static Reader skipBOM(InputStream is) throws IOException {
+		var in = new BufferedReader(new InputStreamReader(is, UTF_8));
+		in.mark(1);
+		if (in.read() != 0xFEFF) {
+			in.reset();
+		}
+		return in;
 	}
 
 	@SneakyThrows

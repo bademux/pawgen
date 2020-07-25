@@ -1,0 +1,37 @@
+{
+  "id" : "e8865b20-e086-43eb-a9f3-4dc7c7e77460",
+  "name" : "deploys_5fb04ca2f58291d9f179966e",
+  "request" : {
+    "url" : "/deploys/5fb04ca2f58291d9f179966e",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\"id\":\"5fb04ca2f58291d9f179966e\",\"site_id\":\"testSiteId\",\"build_id\":null,\"state\":\"uploading\",\"name\":\"pawet\",\"url\":\"http://pawet.netlify.app\",\"ssl_url\":\"https://pawet.netlify.app\",\"admin_url\":\"https://app.netlify.com/sites/pawet\",\"deploy_url\":\"http://5fb04ca2f58291d9f179966e--pawet.netlify.app\",\"deploy_ssl_url\":\"https://5fb04ca2f58291d9f179966e--pawet.netlify.app\",\"created_at\":\"2020-11-14T21:31:14.110Z\",\"updated_at\":\"2020-11-14T21:31:14.192Z\",\"user_id\":\"5bd5c3b5c965920d3f0000a5\",\"error_message\":null,\"required\":[],\"required_functions\":null,\"commit_ref\":null,\"review_id\":null,\"branch\":null,\"commit_url\":null,\"skipped\":null,\"locked\":null,\"log_access_attributes\":{\"type\":\"firebase\",\"url\":\"https://netlify-builds4.firebaseio.com/deploys/5fb04ca2f58291d9f179966e/log\",\"endpoint\":\"https://netlify-builds4.firebaseio.com\",\"path\":\"/deploys/5fb04ca2f58291d9f179966e/log\",\"token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2IjowLCJpYXQiOjE2MDUzODk0NzYsImQiOnsidWlkIjoiIn19.7zIm8MxBH_xc6YBIP4ttk8Cbaa8r2nGKpmWsn550DU8\"},\"title\":\"pawgen_test_deploy\",\"review_url\":null,\"published_at\":null,\"context\":\"production\",\"deploy_time\":null,\"available_functions\":[],\"screenshot_url\":null,\"site_capabilities\":{\"title\":\"Netlify Team Free\",\"asset_acceleration\":true,\"form_processing\":true,\"cdn_propagation\":\"partial\",\"build_node_pool\":\"buildbot-external-ssd\",\"domain_aliases\":true,\"secure_site\":false,\"prerendering\":true,\"proxying\":true,\"ssl\":\"custom\",\"rate_cents\":0,\"yearly_rate_cents\":0,\"ipv6_domain\":\"cdn.makerloop.com\",\"branch_deploy\":true,\"managed_dns\":true,\"geo_ip\":true,\"split_testing\":true,\"id\":\"nf_team_dev\",\"cdn_tier\":\"reg\"},\"committer\":null,\"skipped_log\":null,\"manual_deploy\":true,\"file_tracking_optimization\":true,\"plugin_state\":\"none\",\"has_edge_handlers\":false,\"summary\":{\"status\":\"building\",\"messages\":[]}}",
+    "headers" : {
+      "Cache-Control" : "max-age=0, private, must-revalidate",
+      "Content-Type" : "application/json; charset=utf-8",
+      "Date" : "Sat, 14 Nov 2020 21:31:16 GMT",
+      "Etag" : "W/\"2ee63237a9de893590d5029e6ccf330c\"",
+      "Retry-After" : "2020-11-14 21:32:16 UTC",
+      "Strict-Transport-Security" : "max-age=31536000; includeSubDomains; preload",
+      "Vary" : "Origin",
+      "X-Content-Type-Options" : "nosniff",
+      "X-Frame-Options" : "ALLOWALL",
+      "X-Nf-Srv-Version" : "5da92b4",
+      "X-Ratelimit-Limit" : "500",
+      "X-Ratelimit-Remaining" : "496",
+      "X-Ratelimit-Reset" : "2020-11-14 21:32:16 UTC",
+      "X-Request-Id" : "220e9da8-51af-4c3a-b7ed-4e3f93711031",
+      "X-Runtime" : "0.044502",
+      "Via" : "1.1 google",
+      "Alt-Svc" : "clear"
+    }
+  },
+  "uuid" : "e8865b20-e086-43eb-a9f3-4dc7c7e77460",
+  "persistent" : true,
+  "scenarioName" : "scenario-1-deploys-5fb04ca2f58291d9f179966e",
+  "requiredScenarioState" : "scenario-1-deploys-5fb04ca2f58291d9f179966e-2",
+  "newScenarioState" : "scenario-1-deploys-5fb04ca2f58291d9f179966e-3",
+  "insertionIndex" : 4
+}

@@ -37,18 +37,23 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 	@EqualsAndHashCode.Include
 	@NonNull
 	private final String title;
+	@Getter
 	private final String author;
+	@Getter
 	private final String date;
+	@Getter
 	private final String source;
+	@Getter
 	private final String file;
+	@Getter
+	private final String fileExt;
 	private final Instant lastModifiedTime;
 	@Getter
 	@NonNull
 	private final String url;
 
-	public static ArticleHeader of(String[] categories, String type, String lang, String title, String author, String date, String source, String file, Instant lastModifiedTime) {
-		Category category = Category.of(categories);
-		return new ArticleHeader(category, type, lang, title, author, date, source, file, lastModifiedTime, createUrl(category, title));
+	public static ArticleHeader of(Category category, String type, String lang, String title, String author, String date, String source, String file, Instant lastModifiedTime) {
+		return new ArticleHeader(category, type, lang, title, author, date, source, file, parseFileExt(file), lastModifiedTime, createUrl(category, title));
 	}
 
 	@Override
@@ -64,7 +69,7 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 		return title.compareTo(o.title);
 	}
 
-	private String getFileExt() {
+	private static String parseFileExt(String file) {
 		if (file == null) {
 			return null;
 		}
@@ -83,45 +88,13 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 		return lang.equals(articleHeader.lang);
 	}
 
-	public boolean isParentFor(ArticleHeader child) {
-		return child.isChildFor(this);
-	}
-
 	public boolean isChildFor(ArticleHeader parent) {
 		return category.isChildFor(parent.getCategory());
 	}
 
-	public final String get(String propName) {
-		switch (propName) {
-			case "author":
-				return author;
-			case "category":
-				return category.toString();
-			case "date":
-				return date;
-			case "file":
-				return file;
-			case "fileExt":
-				return getFileExt();
-			case "lang":
-				return lang;
-			case "source":
-				return source;
-			case "title":
-				return (".".equals(title) || category.toString().endsWith("_space")) ? "" : title;
-			case "type":
-				return type;
-			case "url":
-				return url;
-			default:
-		}
-		return null;
-	}
-
-
-	public final CharSequence relativize(String url) {
+	public String relativize(String url) {
 		if (url == null) {
-			return url;
+			return null;
 		}
 		return category.relativize(normalize(url));
 	}
@@ -131,7 +104,7 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 			return new URI(url).normalize().toASCIIString();
 		} catch (URISyntaxException e) {
 			//TODO: fix url in articles and make throw exception if invalid article
-			log.error("bad url for article {}", this, e);
+			log.warn("bad url '{}' for article: '{}'", url, title);
 		}
 		return url;
 	}
@@ -141,8 +114,18 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 
 	static String createUrl(Category category, String title) {
 		int maxTitleLength = 255 - EXT.length();
-		String t = '/' + normalizeTitle(title, maxTitleLength) + EXT;
-		return category.isRoot() ? t : '/' + category.toString() + t;
+		title = '/' + normalizeTitle(title, maxTitleLength) + EXT;
+		String url = category.isRoot() ? title : '/' + category.toString() + title;
+		url = replaceUnwantedChars(url);
+		URI uri = URI.create(url);
+		assert !uri.isAbsolute() : "uri should be absolute: " + uri;
+		return uri.toString();
+	}
+
+	private static String replaceUnwantedChars(String url) {
+		return url.replaceAll("[:*?<>|]", "_")
+			.replace(' ', '_')
+			.replace('"', '\'');
 	}
 
 	static String normalizeTitle(String title, int maxTitleLength) {
@@ -150,7 +133,7 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 		if (titleLength > maxTitleLength) {
 			title = splitStringByByteLength(title, maxTitleLength);
 		}
-		return title.replace(' ', '_').replace('"', '\'');
+		return title;
 	}
 
 	static String splitStringByByteLength(String src, int size) {

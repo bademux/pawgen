@@ -2,18 +2,17 @@ package net.pawet.pawgen.component.xml;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.experimental.NonFinal;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.EventFilter;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
+import java.util.Iterator;
 import java.util.stream.Stream;
 
+import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.StreamSupport.stream;
-import static lombok.AccessLevel.PRIVATE;
 
 @RequiredArgsConstructor
 class PawFilter implements EventFilter {
@@ -54,8 +53,8 @@ class PawFilter implements EventFilter {
 		return prefix.isEmpty() || this.prefix.equalsIgnoreCase(prefix);
 	}
 
-	public Stream<Attribute> filterAttributes(Iterable<Attribute> itr) {
-		return stream(itr.spliterator(), false)
+	public Stream<Attribute> filterAttributes(Iterator<Attribute> itr) {
+		return stream(spliteratorUnknownSize(itr, 0), false)
 			.filter(attr -> isValidPrefix(attr.getName().getPrefix()));
 	}
 }

@@ -1,0 +1,36 @@
+{
+  "id" : "a00e6713-e884-4b2e-962e-22311ba33f96",
+  "name" : "deploys_5fb04ca2f58291d9f179966e",
+  "request" : {
+    "url" : "/deploys/5fb04ca2f58291d9f179966e",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\"id\":\"5fb04ca2f58291d9f179966e\",\"site_id\":\"testSiteId\",\"build_id\":null,\"state\":\"ready\",\"name\":\"pawet\",\"url\":\"http://pawet.netlify.app\",\"ssl_url\":\"https://pawet.netlify.app\",\"admin_url\":\"https://app.netlify.com/sites/pawet\",\"deploy_url\":\"http://5fb04ca2f58291d9f179966e--pawet.netlify.app\",\"deploy_ssl_url\":\"https://5fb04ca2f58291d9f179966e--pawet.netlify.app\",\"created_at\":\"2020-11-14T21:31:14.110Z\",\"updated_at\":\"2020-11-14T21:31:17.749Z\",\"user_id\":\"5bd5c3b5c965920d3f0000a5\",\"error_message\":null,\"required\":[],\"required_functions\":[],\"commit_ref\":null,\"review_id\":null,\"branch\":null,\"commit_url\":null,\"skipped\":null,\"locked\":null,\"log_access_attributes\":{\"type\":\"firebase\",\"url\":\"https://netlify-builds4.firebaseio.com/deploys/5fb04ca2f58291d9f179966e/log\",\"endpoint\":\"https://netlify-builds4.firebaseio.com\",\"path\":\"/deploys/5fb04ca2f58291d9f179966e/log\",\"token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2IjowLCJpYXQiOjE2MDUzODk0NzgsImQiOnsidWlkIjoiIn19.RbsWGzeIsI6-Fhjw8-4HnxAXebWXs3_iVECgZwUo8sQ\"},\"title\":\"pawgen_test_deploy\",\"review_url\":null,\"published_at\":\"2020-11-14T21:31:17.627Z\",\"context\":\"production\",\"deploy_time\":3,\"available_functions\":[],\"screenshot_url\":null,\"site_capabilities\":{\"title\":\"Netlify Team Free\",\"asset_acceleration\":true,\"form_processing\":true,\"cdn_propagation\":\"partial\",\"build_node_pool\":\"buildbot-external-ssd\",\"domain_aliases\":true,\"secure_site\":false,\"prerendering\":true,\"proxying\":true,\"ssl\":\"custom\",\"rate_cents\":0,\"yearly_rate_cents\":0,\"ipv6_domain\":\"cdn.makerloop.com\",\"branch_deploy\":true,\"managed_dns\":true,\"geo_ip\":true,\"split_testing\":true,\"id\":\"nf_team_dev\",\"cdn_tier\":\"reg\"},\"committer\":null,\"skipped_log\":null,\"manual_deploy\":true,\"file_tracking_optimization\":true,\"plugin_state\":\"none\",\"has_edge_handlers\":false,\"summary\":{\"status\":\"ready\",\"messages\":[{\"type\":\"info\",\"title\":\"2 new files uploaded\",\"description\":\"2 generated pages changed.\",\"details\":\"New pages include:\\n- test_file13.html\\n- test_file23.html\\n\"},{\"type\":\"info\",\"title\":\"No redirect rules processed\",\"description\":\"This deploy did not include any redirect rules. [Learn more about redirects](https://www.netlify.com/docs/redirects/).\",\"details\":\"\"},{\"type\":\"info\",\"title\":\"No header rules processed\",\"description\":\"This deploy did not include any header rules. [Learn more about headers](https://www.netlify.com/docs/headers-and-basic-auth/).\",\"details\":\"\"},{\"type\":\"info\",\"title\":\"All linked resources are secure\",\"description\":\"Congratulations! No insecure mixed content found in your files.\",\"details\":null}]}}",
+    "headers" : {
+      "Cache-Control" : "max-age=0, private, must-revalidate",
+      "Content-Type" : "application/json; charset=utf-8",
+      "Date" : "Sat, 14 Nov 2020 21:31:18 GMT",
+      "Etag" : "W/\"ede500395e94a895ce5b1e126d938904\"",
+      "Retry-After" : "2020-11-14 21:32:18 UTC",
+      "Strict-Transport-Security" : "max-age=31536000; includeSubDomains; preload",
+      "Vary" : "Origin",
+      "X-Content-Type-Options" : "nosniff",
+      "X-Frame-Options" : "ALLOWALL",
+      "X-Nf-Srv-Version" : "5da92b4",
+      "X-Ratelimit-Limit" : "500",
+      "X-Ratelimit-Remaining" : "493",
+      "X-Ratelimit-Reset" : "2020-11-14 21:32:18 UTC",
+      "X-Request-Id" : "c647205d-f68b-4684-82f6-0cbb497de88b",
+      "X-Runtime" : "0.046103",
+      "Via" : "1.1 google",
+      "Alt-Svc" : "clear"
+    }
+  },
+  "uuid" : "a00e6713-e884-4b2e-962e-22311ba33f96",
+  "persistent" : true,
+  "scenarioName" : "scenario-1-deploys-5fb04ca2f58291d9f179966e",
+  "requiredScenarioState" : "scenario-1-deploys-5fb04ca2f58291d9f179966e-4",
+  "insertionIndex" : 7
+}
