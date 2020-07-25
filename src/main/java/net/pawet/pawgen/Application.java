@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.ArticleHeader;
 import net.pawet.pawgen.component.Storage;
 import net.pawet.pawgen.component.img.ImageParser;
+import net.pawet.pawgen.component.img.WatermarkFilter;
 import net.pawet.pawgen.component.render.ProcessingItem;
 import net.pawet.pawgen.component.render.Templater;
 import net.pawet.pawgen.component.system.CommandLineOptions;
@@ -51,12 +52,19 @@ public class Application implements Runnable, AutoCloseable {
 	static Application create(CommandLineOptions opts) {
 		var imageProcessingExecutor = new ImageProcessingExecutorService();
 		var storage = Storage.of(opts.getContentDir(), opts.getOutputDir(), opts.getStaticDir(), opts.getDateFrom());
-		var imageParser = ImageParser.of(imageProcessingExecutor, storage, opts.getWatermarkText());
+		var imageParser = ImageParser.of(imageProcessingExecutor, storage, createWatermarkFilter(opts));
 		var contentReader = ContentParser.of(storage, imageParser);
 		var templater = Templater.of(opts.getTemplatesDir());
 		Application application = new Application(imageProcessingExecutor, new HeaderParser(), contentReader, templater, storage);
 		Runtime.getRuntime().addShutdownHook(new Thread(application::close));
 		return application;
+	}
+
+	private static WatermarkFilter createWatermarkFilter(CommandLineOptions opts) {
+		if (opts.getWatermarkFile() != null) {
+			return WatermarkFilter.of(opts.getWatermarkFile(), 0.7f);
+		}
+		return WatermarkFilter.of(opts.getWatermarkText(), 0.7f);
 	}
 
 	@Override
@@ -92,6 +100,10 @@ public class Application implements Runnable, AutoCloseable {
 	public void close() {
 		imageProcessingExecutor.shutdown();
 		storage.close();
+	}
+
+	static {
+		System.setProperty("java.awt.headless", Boolean.TRUE.toString());
 	}
 }
 

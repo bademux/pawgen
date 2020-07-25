@@ -26,8 +26,8 @@ public final class ImageParser {
 	private final int thumbnailWidth;
 	private final WatermarkFilter watermarkFilter;
 
-	public static ImageParser of(ExecutorService imageProcessingExecutor, Storage storage, String watermarkText) {
-		return new ImageParser(imageProcessingExecutor, storage, 250, WatermarkFilter.of(watermarkText, 0.7f));
+	public static ImageParser of(ExecutorService imageProcessingExecutor, Storage storage, WatermarkFilter watermarkFilter) {
+		return new ImageParser(imageProcessingExecutor, storage, 250, watermarkFilter);
 	}
 
 	@SneakyThrows

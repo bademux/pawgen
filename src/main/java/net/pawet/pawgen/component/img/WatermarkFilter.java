@@ -1,13 +1,16 @@
 package net.pawet.pawgen.component.img;
 
-import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.font.FontRenderContext;
 import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static java.awt.Color.BLACK;
 import static java.awt.Color.LIGHT_GRAY;
@@ -17,13 +20,17 @@ import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON;
 import static java.awt.image.BufferedImage.TYPE_INT_ARGB;
 import static java.util.Objects.requireNonNull;
+import static lombok.AccessLevel.PRIVATE;
 
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-final class WatermarkFilter {
-
+@RequiredArgsConstructor(access = PRIVATE)
+public final class WatermarkFilter {
 
 	private final BufferedImage watermarkImg;
 	private final AlphaComposite composite;
+
+	public static WatermarkFilter of(Path watermarkFile, float opacity) {
+		return new WatermarkFilter(createWatermarkImage(watermarkFile), createComposite(opacity));
+	}
 
 	public static WatermarkFilter of(String text, float opacity) {
 		return new WatermarkFilter(createWatermarkImage(text), createComposite(opacity));
@@ -42,6 +49,13 @@ final class WatermarkFilter {
 
 	private Point randPoint(int width, int height) {
 		return Position.getRandom().calculate(width, height, watermarkImg.getWidth(), watermarkImg.getHeight());
+	}
+
+	@SneakyThrows
+	static BufferedImage createWatermarkImage(Path watermarkFile) {
+		try (var is = Files.newInputStream(watermarkFile)) {
+			return ImageIO.read(is);
+		}
 	}
 
 	static BufferedImage createWatermarkImage(String text) {
@@ -68,8 +82,7 @@ final class WatermarkFilter {
 
 	static AlphaComposite createComposite(float opacity) {
 		if (opacity > 1.0f || opacity < 0.0f) {
-			throw new IllegalArgumentException("Opacity is out of range of " +
-				"between 0.0f and 1.0f.");
+			throw new IllegalArgumentException("Opacity is out of range of between 0.0f and 1.0f.");
 		}
 		return AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity);
 	}
