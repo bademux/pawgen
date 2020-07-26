@@ -3,7 +3,7 @@ package net.pawet.pawgen.component.img;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.component.Storage;
 
@@ -11,13 +11,14 @@ import java.awt.*;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.logging.Level;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 // original <img src="_img/prawdzic.png" align="right" class="img_left"></img>
 // processed <img src="/cache/genealogy/chrul/_img/thumb_jotki.jpg" height="174" width="250" alt="(29KB) jotki.jpg" title="jotki.jpg" class="g_img" onClick="showLightbox(this, '/cache/genealogy/chrul/_img/jotki.jpg')"/>
-@Slf4j
+@Log
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class ImageParser {
 
@@ -56,7 +57,7 @@ public final class ImageParser {
 				s -> storage.outputStream(category, s)
 			);
 		} catch (Exception e) {
-			log.warn("Error while processing image {}/{}", category, src, e);
+			log.log(Level.WARNING, e, () -> "Error while processing image " + category + '/' + src);
 		}
 	}
 

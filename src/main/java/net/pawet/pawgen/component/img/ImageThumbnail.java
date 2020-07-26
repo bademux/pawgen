@@ -2,7 +2,7 @@ package net.pawet.pawgen.component.img;
 
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 
 import javax.imageio.*;
 import javax.imageio.metadata.IIOInvalidTreeException;
@@ -18,13 +18,14 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
 import static java.awt.RenderingHints.*;
 import static java.util.Objects.requireNonNull;
 import static javax.imageio.metadata.IIOMetadataFormatImpl.standardMetadataFormatName;
 import static lombok.AccessLevel.PRIVATE;
 
-@Slf4j
+@Log
 @RequiredArgsConstructor(access = PRIVATE)
 final class ImageThumbnail implements Image {
 
@@ -82,9 +83,9 @@ final class ImageThumbnail implements Image {
 			watermarkFilter.accept(img);
 			writeImage(img, formatName, os);
 		} catch (FileAlreadyExistsException e) {
-			log.debug("File '{}' already exists", e.getFile());
+			log.log(Level.FINE, "File '{}' already exists", e.getFile());
 		} catch (IOException e) {
-			log.error("exception while processing image '{}'", src, e);
+			log.log(Level.SEVERE, e, () -> "exception while processing image " + src);
 		}
 	}
 
@@ -94,9 +95,9 @@ final class ImageThumbnail implements Image {
 			BufferedImage thumbnailImage = resize(img, thumbnailDimension);
 			writeImage(thumbnailImage, "jpg", os);
 		} catch (FileAlreadyExistsException e) {
-			log.debug("File '{}' already exists", e.getFile());
+			log.log(Level.FINE, "File '{}' already exists", e.getFile());
 		} catch (IOException e) {
-			log.error("exception while saving image {}", thumbnailSrc, e);
+			log.log(Level.SEVERE, e, () -> "exception while processing image " + thumbnailSrc);
 		}
 	}
 

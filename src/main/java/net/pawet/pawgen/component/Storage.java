@@ -3,7 +3,7 @@ package net.pawet.pawgen.component;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.logging.Level;
 import java.util.stream.Stream;
 
 import static java.lang.Integer.MAX_VALUE;
@@ -24,7 +25,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.*;
 import static lombok.AccessLevel.PRIVATE;
 
-@Slf4j
+@Log
 @RequiredArgsConstructor(staticName = "of")
 public class Storage implements AutoCloseable {
 
@@ -49,7 +50,7 @@ public class Storage implements AutoCloseable {
 		try {
 			Files.copy(src, createDestPath(src), REPLACE_EXISTING);
 		} catch (IOException e) {
-			log.error("Can't copy file '{}' to staticDir", src, e);
+			log.log(Level.SEVERE, e, () -> "Can't copy file '{}' to staticDir" + src);
 		}
 	}
 

@@ -4,7 +4,7 @@ import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.MustacheFactory;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 import net.pawet.pawgen.component.ArticleHeader;
 
 import java.io.Writer;
@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 import static lombok.AccessLevel.PRIVATE;
 
 @RequiredArgsConstructor(access = PRIVATE)
-@Slf4j
+@Log
 public class Templater {
 
 	private static final String DEFAULT_EXT = ".mustache";

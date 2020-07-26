@@ -1,7 +1,7 @@
 package net.pawet.pawgen;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 import net.pawet.pawgen.component.ArticleHeader;
 import net.pawet.pawgen.component.Storage;
 import net.pawet.pawgen.component.img.ImageParser;
@@ -17,9 +17,10 @@ import java.time.Clock;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
+import static java.util.logging.Level.FINE;
 import static java.util.stream.Collectors.toUnmodifiableList;
 
-@Slf4j
+@Log
 @RequiredArgsConstructor
 public class Application implements Runnable, AutoCloseable {
 
@@ -42,7 +43,7 @@ public class Application implements Runnable, AutoCloseable {
 			app.printImageProcessingStatus();
 			System.out.printf("Processed in %ds\n", (clock.millis() - start) / 1000);
 		} catch (Throwable e) {
-			log.debug("Error: ", e);
+			log.log(FINE, "Error: ", e);
 			CommandLineOptions.handleError(e).forEach(System.out::println);
 			e.printStackTrace();
 			System.exit(1);

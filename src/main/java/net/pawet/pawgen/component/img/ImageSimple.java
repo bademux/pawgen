@@ -1,7 +1,7 @@
 package net.pawet.pawgen.component.img;
 
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 
 import java.awt.*;
 import java.io.InputStream;
@@ -10,10 +10,11 @@ import java.nio.file.FileAlreadyExistsException;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
 import static net.pawet.pawgen.component.img.Image.calcDimension;
 
-@Slf4j
+@Log
 final class ImageSimple implements Image {
 
 	private final Dimension dimension;
@@ -56,9 +57,9 @@ final class ImageSimple implements Image {
 		try (var is = srcProvider.get(); var os = destProvider.apply(src)) {
 			is.transferTo(os);
 		} catch (FileAlreadyExistsException e) {
-			log.debug("File '{}' already exists", e.getFile());
+			log.log(Level.FINE, "File '{}' already exists", e.getFile());
 		} catch (Exception e) {
-			log.error("exception while saving thumbnail", e);
+			log.log(Level.SEVERE, "exception while saving thumbnail", e);
 		}
 	}
 

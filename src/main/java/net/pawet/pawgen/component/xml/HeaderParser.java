@@ -1,7 +1,7 @@
 package net.pawet.pawgen.component.xml;
 
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 import net.pawet.pawgen.component.ArticleHeader;
 import net.pawet.pawgen.component.Storage;
 
@@ -13,13 +13,14 @@ import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.stream.Stream;
 
 import static java.util.stream.StreamSupport.stream;
 import static net.pawet.pawgen.component.xml.XmlUtils.createXMLEventReader;
 import static net.pawet.pawgen.component.xml.XmlUtils.getWithPrefix;
 
-@Slf4j
+@Log
 public class HeaderParser {
 
 	public static final Set<String> ROOT_TAG_NAMES = Set.of("article", "gallery");
@@ -29,15 +30,13 @@ public class HeaderParser {
 		try (var is = readable.readContent()) {
 			var xmlr = createXMLEventReader(is);
 			try {
-				if (log.isDebugEnabled()) {
-					log.debug("Handling category {}", Arrays.toString(readable.getCategory()));
-				}
+				log.log(Level.FINE, () -> "Handling category " + Arrays.toString(readable.getCategory()));
 				return parse(readable, xmlr);
 			} finally {
 				xmlr.close();
 			}
 		} catch (Exception e) {
-			log.error("error while parsing {}", readable, e);
+			log.log(Level.WARNING, e, () -> "error while parsing " + readable);
 			throw e;
 		}
 	}

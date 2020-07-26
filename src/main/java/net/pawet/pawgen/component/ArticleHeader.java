@@ -1,7 +1,7 @@
 package net.pawet.pawgen.component;
 
 import lombok.*;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetEncoder;
 import java.time.Instant;
+import java.util.logging.Level;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static lombok.AccessLevel.PRIVATE;
@@ -16,7 +17,7 @@ import static lombok.AccessLevel.PRIVATE;
 @ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @RequiredArgsConstructor(access = PRIVATE)
-@Slf4j
+@Log
 public final class ArticleHeader implements Comparable<ArticleHeader> {
 	@Getter
 	@ToString.Include
@@ -131,7 +132,7 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 			return new URI(url).normalize().toASCIIString();
 		} catch (URISyntaxException e) {
 			//TODO: fix url in articles and make throw exception if invalid article
-			log.error("bad url for article {}", this, e);
+			log.log(Level.SEVERE, e, () -> "bad url for article " + this);
 		}
 		return url;
 	}
