@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Writer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -106,20 +107,20 @@ public class Storage implements AutoCloseable {
 		return Files.newBufferedWriter(target, UTF_8, WRITE, TRUNCATE_EXISTING, CREATE);
 	}
 
-	public InputStream inputStream(Category category, String src) {
+	public FileChannel inputStream(Category category, String src) {
 		return inputStream(category.resolveWith(contentDir).resolve(src));
 	}
 
 	@SneakyThrows
-	private InputStream inputStream(Path path) {
-		return newInputStream(path, READ);
+	private FileChannel inputStream(Path path) {
+		return FileChannel.open(path, READ);
 	}
 
 	@SneakyThrows
-	public OutputStream outputStream(Category category, String src) {
+	public FileChannel outputStream(Category category, String src) {
 		Path target = category.resolveWith(outputDir).resolve(src);
 		createDirsIfNeeded(target.getParent());
-		return newOutputStream(target, WRITE, TRUNCATE_EXISTING, CREATE);
+		return FileChannel.open(target, WRITE, TRUNCATE_EXISTING, CREATE);
 	}
 
 	private void createDirsIfNeeded(Path dir) throws IOException {
@@ -156,7 +157,7 @@ public class Storage implements AutoCloseable {
 			return Files.getLastModifiedTime(path).toInstant();
 		}
 
-		public InputStream readContent() {
+		public FileChannel readContent() {
 			return inputStream(path);
 		}
 

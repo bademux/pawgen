@@ -68,10 +68,7 @@ public class Application implements Runnable, AutoCloseable {
 	}
 
 	private static WatermarkFilter createWatermarkFilter(CommandLineOptions opts) {
-		if (opts.getWatermarkFile() != null) {
-			return WatermarkFilter.of(opts.getWatermarkFile(), 0.7f);
-		}
-		return WatermarkFilter.of(opts.getWatermarkText(), 0.7f);
+		return WatermarkFilter.of(opts.getWatermarkFile());
 	}
 
 	@Override

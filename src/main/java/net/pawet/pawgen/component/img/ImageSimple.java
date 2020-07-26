@@ -4,8 +4,7 @@ import lombok.SneakyThrows;
 import lombok.extern.java.Log;
 
 import java.awt.*;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.Map;
 import java.util.function.Function;
@@ -52,10 +51,10 @@ final class ImageSimple implements Image {
 
 	@SneakyThrows
 	@Override
-	public final void processImage(Supplier<InputStream> srcProvider, Function<String, OutputStream> destProvider) {
+	public final void processImage(Supplier<FileChannel> srcProvider, Function<String, FileChannel> destProvider) {
 		String src = attrs.get("src");
 		try (var is = srcProvider.get(); var os = destProvider.apply(src)) {
-			is.transferTo(os);
+			is.transferTo(0, is.size(), os);
 		} catch (FileAlreadyExistsException e) {
 			log.log(Level.FINE, "File '{}' already exists", e.getFile());
 		} catch (Exception e) {

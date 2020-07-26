@@ -1,4 +1,5 @@
 plugins {
+	id 'org.javamodularity.moduleplugin' version '1.7.0'
 	id 'application'
 	id 'groovy'
 	id 'com.palantir.graal' version '0.7.1'
@@ -13,6 +14,9 @@ version "${details.lastTag}.${details.commitDistance}-${details.gitHash}"
 repositories {
 	mavenCentral()
 	jcenter()
+	flatDir {
+		dirs 'libs'
+	}
 }
 
 def generatedDir = "$buildDir/generated/src/java"
@@ -75,13 +79,17 @@ jlink {
 
 test {
 	useJUnitPlatform()
+	moduleOptions {
+		runOnClasspath = true
+	}
 }
 
 dependencies {
 	compileOnly "org.projectlombok:lombok:$lombokVersion"
 	annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+	implementation name: 'JVips-8.9.0-4a0fc3c', ext: 'jar'
 	implementation 'com.github.spullara.mustache.java:compiler:0.9.6'
-	implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.6'
 
 	testCompileOnly "org.projectlombok:lombok:$lombokVersion"
 	testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"

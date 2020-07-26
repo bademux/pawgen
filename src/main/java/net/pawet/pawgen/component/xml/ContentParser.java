@@ -17,6 +17,7 @@ import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 import java.io.Writer;
+import java.nio.channels.Channels;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -41,7 +42,7 @@ public class ContentParser {
 	CharSequence read(Category category, String title) {
 		XMLEventReader xmlr = null;
 		try (var inputStream = storage.inputStream(category, "index.xml")) {
-			xmlr = createXMLEventReader(inputStream);
+			xmlr = createXMLEventReader(Channels.newInputStream(inputStream));
 			return new XmlArticle(category, title).read(xmlr);
 		} finally {
 			if (xmlr != null) {

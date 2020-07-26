@@ -11,6 +11,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
+import java.nio.channels.Channels;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.logging.Level;
@@ -28,7 +29,7 @@ public class HeaderParser {
 	@SneakyThrows
 	public Stream<ArticleHeader> parse(Storage.Readable readable) {
 		try (var is = readable.readContent()) {
-			var xmlr = createXMLEventReader(is);
+			var xmlr = createXMLEventReader(Channels.newInputStream(is));
 			try {
 				log.log(Level.FINE, () -> "Handling category " + Arrays.toString(readable.getCategory()));
 				return parse(readable, xmlr);
