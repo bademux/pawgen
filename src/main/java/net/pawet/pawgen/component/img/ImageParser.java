@@ -40,6 +40,7 @@ public final class ImageParser {
 			executor.execute(() -> processImage(image, category, src));
 			return image.asAttrs();
 		} catch (Exception e) {
+			log.log(Level.SEVERE, e, () -> "Error while processing image " + category + '/' + src);
 			return Map.of("src", "/res/img/noimage.png", "alt", format("no image %s/%s founded", category, src));
 		}
 	}
@@ -51,14 +52,10 @@ public final class ImageParser {
 	}
 
 	private void processImage(Image image, Category category, String src) {
-		try {
-			image.processImage(
-				() -> storage.inputStream(category, src),
-				s -> storage.outputStream(category, s)
-			);
-		} catch (Exception e) {
-			log.log(Level.WARNING, e, () -> "Error while processing image " + category + '/' + src);
-		}
+		image.processImage(
+			() -> storage.inputStream(category, src),
+			s -> storage.outputStream(category, s)
+		);
 	}
 
 	private boolean hasThumbnail(Dimension dimension, Map<String, String> attrs) {

@@ -4,7 +4,8 @@
     {"pattern":"\\QMETA-INF/services/javax.imageio.spi.ImageWriterSpi\\E"},
     {"pattern":"\\Qcom/twelvemonkeys/imageio/color/icc_profiles_lnx.properties\\E"},
 	{"pattern":"\\Qcom/twelvemonkeys/imageio/color/icc_profiles_osx.properties\\E"},
-	{"pattern":"\\Qcom/twelvemonkeys/imageio/color/icc_profiles_win.properties\\E"}
+	{"pattern":"\\Qcom/twelvemonkeys/imageio/color/icc_profiles_win.properties\\E"},
+	{"pattern":"\\Qprofiles/ClayRGB1998.icc\\E"}
   ],
   "bundles":[]
 }

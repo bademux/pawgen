@@ -49,7 +49,6 @@ graal {
 	outputName application.applicationName
 	javaVersion compileJava.targetCompatibility
 	option '-H:+ReportExceptionStackTraces'
-	option '-H:+TraceClassInitialization'
 	option '--initialize-at-build-time=com.twelvemonkeys.imageio.plugins.jpeg.JPEGImageReader$3'
 //	option '--no-fallback'
 }
