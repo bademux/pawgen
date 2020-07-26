@@ -14,6 +14,8 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.stream.Stream;
 
@@ -23,6 +25,7 @@ import static java.nio.file.FileVisitOption.FOLLOW_LINKS;
 import static java.nio.file.Files.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.*;
+import static java.util.function.Predicate.not;
 import static lombok.AccessLevel.PRIVATE;
 
 @Log
@@ -38,8 +41,13 @@ public class Storage implements AutoCloseable {
 	@SneakyThrows
 	public void copyStaticResources() {
 		try (Stream<Path> paths = find(staticDir, MAX_VALUE, this::isLatestFile, FOLLOW_LINKS)) {
-			paths.filter(path -> path.toString().contains("/res/")).forEach(this::copyToStaticDir);
+			paths.filter(not(this::skipKnownDirs))
+				.forEach(this::copyToStaticDir);
 		}
+	}
+
+	private boolean skipKnownDirs(Path path) {
+		return path.startsWith(contentDir);
 	}
 
 	private boolean isLatestFile(Path path, BasicFileAttributes attrs) {

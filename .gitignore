@@ -13,3 +13,4 @@ out/
 .classpath
 output.zip
 pawet.net.zip
+*.log

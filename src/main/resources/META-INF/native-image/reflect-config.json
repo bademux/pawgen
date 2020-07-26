@@ -1,0 +1,15 @@
+[
+{
+  "name":"com.sun.imageio.plugins.jpeg.JPEGImageReaderSpi"
+},
+{
+  "name":"com.sun.imageio.plugins.jpeg.JPEGImageWriterSpi"
+},
+{
+  "name":"java.util.Map",
+  "methods":[{"name":"get","parameterTypes":["java.lang.Object"] }]
+},
+{
+  "name":"java.util.stream.Stream"
+}
+]

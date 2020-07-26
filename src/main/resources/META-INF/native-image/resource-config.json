@@ -1,0 +1,10 @@
+{
+  "resources":[
+    {"pattern":"\\QMETA-INF/services/javax.imageio.spi.ImageReaderSpi\\E"},
+    {"pattern":"\\QMETA-INF/services/javax.imageio.spi.ImageWriterSpi\\E"},
+    {"pattern":"\\Qcom/twelvemonkeys/imageio/color/icc_profiles_lnx.properties\\E"},
+	{"pattern":"\\Qcom/twelvemonkeys/imageio/color/icc_profiles_osx.properties\\E"},
+	{"pattern":"\\Qcom/twelvemonkeys/imageio/color/icc_profiles_win.properties\\E"}
+  ],
+  "bundles":[]
+}

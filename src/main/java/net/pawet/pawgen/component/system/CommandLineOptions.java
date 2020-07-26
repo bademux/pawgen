@@ -87,22 +87,22 @@ public final class CommandLineOptions {
 		if (props.isEmpty()) {
 			return;
 		}
-		ofNullable(props.getProperty("site.watermarkText"))
+		ofNullable(props.getProperty("watermark.text"))
 			.filter(not(String::isBlank))
 			.ifPresent(optionsBuilder::watermarkText);
-		ofNullable(props.getProperty("site.watermarkFile"))
+		ofNullable(props.getProperty("watermark.file"))
 			.map(Path::of)
 			.ifPresent(optionsBuilder::watermarkFile);
-		ofNullable(props.getProperty("site.contentDir"))
+		ofNullable(props.getProperty("contentDir"))
 			.map(Path::of)
 			.ifPresent(optionsBuilder::contentDir);
-		ofNullable(props.getProperty("site.outputDir"))
+		ofNullable(props.getProperty("outputDir"))
 			.map(Path::of)
 			.ifPresent(optionsBuilder::outputDir);
-		ofNullable(props.getProperty("site.templatesDir"))
+		ofNullable(props.getProperty("templatesDir"))
 			.map(Path::of)
 			.ifPresent(optionsBuilder::templatesDir);
-		ofNullable(props.getProperty("site.staticDir"))
+		ofNullable(props.getProperty("staticDir"))
 			.map(Path::of)
 			.ifPresent(optionsBuilder::staticDir);
 	}

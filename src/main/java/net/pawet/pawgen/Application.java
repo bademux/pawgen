@@ -1,6 +1,7 @@
 package net.pawet.pawgen;
 
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.java.Log;
 import net.pawet.pawgen.component.ArticleHeader;
 import net.pawet.pawgen.component.Storage;
@@ -13,9 +14,14 @@ import net.pawet.pawgen.component.system.ImageProcessingExecutorService;
 import net.pawet.pawgen.component.xml.ContentParser;
 import net.pawet.pawgen.component.xml.HeaderParser;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.FileHandler;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import static java.util.logging.Level.FINE;
 import static java.util.stream.Collectors.toUnmodifiableList;
@@ -105,6 +111,14 @@ public class Application implements Runnable, AutoCloseable {
 
 	static {
 		System.setProperty("java.awt.headless", Boolean.TRUE.toString());
+		Logger.getLogger("").addHandler(createFileHandler());
+	}
+
+	@SneakyThrows
+	private static FileHandler createFileHandler() {
+		FileHandler handler = new FileHandler("pawgen.%g.log", 1024 * 1024, 3, true);
+		handler.setFormatter(new SimpleFormatter());
+		return handler;
 	}
 }
 
