@@ -20,7 +20,7 @@ import static java.util.stream.Collectors.*;
 import static lombok.AccessLevel.PRIVATE;
 
 @Slf4j
-public class NetlifyDeployer<T extends FileDigest & FileData> {
+class NetlifyDeployer<T extends FileDigest & FileData> {
 
 	private static final String DEPLOYMENT_TITLE = "pawgen_deployer";
 	private final NetlifyClient netlifyClient;
@@ -56,8 +56,6 @@ public class NetlifyDeployer<T extends FileDigest & FileData> {
 	}
 
 	/**
-	 * @param deployId
-	 * @param files
 	 * @return true if everything is uploaded successfully
 	 */
 	@SneakyThrows
@@ -155,7 +153,7 @@ final class Deployer<T extends FileDigest & FileData> {
 				}
 			case "prepared": // upload nor started yet
 				log.debug("Got deployId '{}'", deployId);
-				var requiredFilesFor = client.getRequiredFilesFor(deployId).collect(toList());
+				var requiredFilesFor = client.getRequiredFilesFor(deployId).toList();
 				var files = requiredFilesFor.stream().map(unique::get).filter(Objects::nonNull).collect(toList());
 				log.info("Uploading {} files", files.size());
 				try {

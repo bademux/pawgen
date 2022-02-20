@@ -2,7 +2,7 @@ plugins {
 	id 'application'
 	id 'groovy'
 	id 'org.graalvm.buildtools.native' version '0.9.9'
-	id 'com.palantir.git-version' version '0.12.3'
+	id 'com.palantir.git-version' version '0.13.0'
 }
 
 def details = versionDetails(prefix: 'v@')

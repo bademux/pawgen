@@ -20,7 +20,7 @@ import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toMap;
 
 @Slf4j
-class FileSystemRegistry implements AutoCloseable {
+public class FileSystemRegistry implements AutoCloseable {
 
 
 	private final Set<FileSystem> fileSystems = ConcurrentHashMap.newKeySet();

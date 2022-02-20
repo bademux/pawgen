@@ -14,21 +14,21 @@ import static lombok.AccessLevel.PACKAGE;
 
 @Slf4j
 @RequiredArgsConstructor(access = PACKAGE)
-class LastBuild {
+public class LastBuildService {
 
 	private final Instant dateFrom;
 	private final Path outputDir;
 
-	public static LastBuild of(Instant dateFrom, Path outputDir) {
+	public static LastBuildService create(Instant dateFrom, Path outputDir) {
 		dateFrom = Optional.ofNullable(dateFrom)
 			.or(() -> getLastUpdateRootFile(outputDir))
 			.orElse(Instant.MIN);
-		return new LastBuild(dateFrom, outputDir);
+		return new LastBuildService(dateFrom, outputDir);
 	}
 
 	private static Optional<Instant> getLastUpdateRootFile(Path outputDir) {
 		try {
-			if(Files.list(outputDir).findAny().isPresent()){
+			if (Files.list(outputDir).findAny().isPresent()) {
 				return Optional.ofNullable(Files.getLastModifiedTime(outputDir).toInstant());
 			}
 		} catch (IOException ignore) {

@@ -1,27 +1,22 @@
 package net.pawet.pawgen.component.system.storage;
 
-import lombok.Builder;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
-import java.net.URI;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.Instant;
-import java.util.Collection;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.lang.Integer.MAX_VALUE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createDirectories;
 import static java.nio.file.Files.walk;
 import static java.nio.file.StandardOpenOption.*;
@@ -33,71 +28,21 @@ import static net.pawet.pawgen.component.system.storage.Sha1DigestService.encode
 
 @Slf4j
 @RequiredArgsConstructor(access = PACKAGE)
-public abstract class Storage implements AutoCloseable {
+public class Storage {
 
 	public static final String ARTICLE_FILENAME = "index.xml";
 
 	private final Predicate<Path> isAttributeFile;
 	private final Sha1DigestService digestService;
-	private final LastBuild lastBuild;
-	private final StaticFileService staticFileService;
+	private final LastBuildService lastBuildService;
+	private final Function<String, Optional<Path>> staticFileResolver;
 	private final Path contentDir;
 	private final Path outputDir;
-	private final Path templatesDir;
-	private final Path watermarkFile;
 
-	@Builder
-	private static Storage create(@NonNull URI contentUri, @NonNull URI outputUri, @NonNull Collection<URI> staticUris, @NonNull URI templatesUri, URI watermarkUri, Instant dateFrom) {
-		var fsRegistry = new FileSystemRegistry();
-		var contentDir = fsRegistry.getPathFsRegistration(contentUri);
-		var outputDir = fsRegistry.getPathFsRegistration(outputUri);
-		var templatesDir = fsRegistry.getPathFsRegistration(templatesUri);
+	public static Storage create(@NonNull Function<String, Optional<Path>> staticFileResolver, @NonNull LastBuildService lastBuildService, @NonNull Path contentDir, @NonNull Path outputDir) {
 		var metaService = new MetaService();
-		var lastBuildService = LastBuild.of(dateFrom, outputDir);
-		var filter = ((Predicate<BasicFileAttributes>) BasicFileAttributes::isRegularFile)
-			.and((attrs) -> lastBuildService.isNewOrUpdated(attrs.lastModifiedTime().toInstant(), attrs.creationTime().toInstant()));
-		var staticFileService = new StaticFileService(staticUris, outputDir, fsRegistry, filter);
 		var digestService = new Sha1DigestService(metaService);
-		var watermarkFile = watermarkUri == null ? null : fsRegistry.getPathFsRegistration(watermarkUri);
-		return new Storage(metaService::isAttributeFile, digestService, lastBuildService, staticFileService, contentDir, outputDir, templatesDir, watermarkFile) {
-			@Override
-			public void close() {
-				fsRegistry.close();
-			}
-		};
-	}
-
-	@SneakyThrows
-	public Reader resolveTemplate(String name) {
-		return Files.newBufferedReader(templatesDir.resolve(name), UTF_8);
-	}
-
-	public InputStream readWatermarkFile() throws IOException {
-		if (watermarkFile == null) {
-			throw new IllegalStateException("no watermarkFile");
-		}
-		return new BufferedInputStream(Files.newInputStream(watermarkFile, READ));
-	}
-
-	public void copyStaticResources() {
-		staticFileService.getStaticFiles()
-			.forEach(entry -> copyFile(entry.getKey(), entry.getValue()));
-	}
-
-	private void copyFile(Path src, Path dest) {
-		if (Files.exists(dest)) {
-			log.debug("Already exists: {}, skiping src: {}", dest, src);
-			return;
-		}
-		log.debug("Copy to: {} from {}", dest, src);
-		try (var os = write(dest)) {
-			createDirsIfNeeded(dest.getParent());
-			Files.copy(src, os); // use #write to calculate digest while copying
-		} catch (FileAlreadyExistsException e) {
-			log.debug("Already processed: {}", e.getFile());
-		} catch (IOException e) {
-			log.error("Can't copy file '{}' to '{}'", src, dest, e);
-		}
+		return new Storage(metaService::isAttributeFile, digestService, lastBuildService, staticFileResolver, contentDir, outputDir);
 	}
 
 	@SneakyThrows
@@ -145,7 +90,7 @@ public abstract class Storage implements AutoCloseable {
 
 	Path resolveReadDir(String pathStr) {
 		if (pathStr.startsWith("/")) {
-			return staticFileService.resolve(pathStr.substring(1))
+			return staticFileResolver.apply(pathStr.substring(1))
 				.orElseGet(() -> contentDir.resolve(pathStr));
 		}
 		return contentDir.resolve(pathStr);
@@ -169,7 +114,7 @@ public abstract class Storage implements AutoCloseable {
 	}
 
 	@SneakyThrows
-	OutputStream write(Path dest) {
+	public OutputStream write(Path dest) {
 		assert dest.isAbsolute() : "expecting absolute path";
 		return digestService.write(dest, this::newOutputStream);
 	}
@@ -249,11 +194,11 @@ public abstract class Storage implements AutoCloseable {
 	public boolean isNewOrChanged(String category) {
 		Path path = resolveReadDir(category).resolve(ARTICLE_FILENAME).normalize();
 		var attrs = Files.getFileAttributeView(path, BasicFileAttributeView.class).readAttributes();
-		return lastBuild.isNewOrUpdated(attrs.lastModifiedTime().toInstant(), attrs.creationTime().toInstant());
+		return lastBuildService.isNewOrUpdated(attrs.lastModifiedTime().toInstant(), attrs.creationTime().toInstant());
 	}
 
 	public void timestamp() {
-		lastBuild.timestamp();
+		lastBuildService.timestamp();
 	}
 
 }

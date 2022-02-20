@@ -1,22 +1,22 @@
 package net.pawet.pawgen.component.render;
 
 import com.github.mustachejava.*;
+import com.github.mustachejava.MustacheResolver;
 import com.github.mustachejava.reflect.BaseObjectHandler;
 import com.github.mustachejava.util.Wrapper;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.render.Renderer.ArticleContext;
-import net.pawet.pawgen.component.system.storage.Storage;
 
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
-import java.io.Writer;
+import java.io.*;
+import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.Files.newBufferedReader;
 
 @Slf4j
 public class Templater {
@@ -26,13 +26,19 @@ public class Templater {
 	private static final String TEMPLATE_NAME = "index.html";
 
 	private final Mustache mustache;
-	private final Storage storage;
+	private final Function<String, InputStream> resourceReader;
 
-	public Templater(Storage storage) {
-		this.storage = storage;
-		var mf = new DefaultMustacheFactory(storage::resolveTemplate);
+	public Templater(Function<String, InputStream> resourceReader, Path templateDir) {
+		this.resourceReader = resourceReader;
+		MustacheResolver mustacheResolver = ((Function<String, Path>)templateDir::resolve).andThen(Templater::resolveTemplate)::apply;
+		var mf = new DefaultMustacheFactory(mustacheResolver);
 		mf.setObjectHandler(new PawgenObjectHandler());
 		this.mustache = mf.compile(TEMPLATE_NAME + DEFAULT_EXT);
+	}
+
+	@SneakyThrows
+	private static Reader resolveTemplate(Path template) {
+		return newBufferedReader(template, UTF_8);
 	}
 
 	public Writer render(Writer writer, Object context, Callable<CharSequence> contentProvider) {
@@ -87,47 +93,30 @@ public class Templater {
 		}
 
 		private Object getByName(String name, ArticleContext context) {
-			switch (name) {
-				case "author":
-					return context.getAuthor();
-				case "category":
-					return context.getCategory();
-				case "date":
-					return context.getDate();
-				case "file":
-					return context.getFile();
-				case "fileExt":
-					return context.getFileExt();
-				case "lang":
-					return context.getLang();
-				case "source":
-					return context.getSource();
-				case "title":
-					return context.getTitle();
-				case "type":
-					return context.getType();
-				case "url":
-					return context.getUrl();
-				case "children":
-					return context.getChildren();
-				case "otherLangArticle":
-					return context.getOtherLangArticle();
-				default:
-					return null;
-			}
+			return switch (name) {
+				case "author" -> context.getAuthor();
+				case "category" -> context.getCategory();
+				case "date" -> context.getDate();
+				case "file" -> context.getFile();
+				case "fileExt" -> context.getFileExt();
+				case "lang" -> context.getLang();
+				case "source" -> context.getSource();
+				case "title" -> context.getTitle();
+				case "type" -> context.getType();
+				case "url" -> context.getUrl();
+				case "children" -> context.getChildren();
+				case "otherLangArticle" -> context.getOtherLangArticle();
+				default -> null;
+			};
 		}
 
 		private Function<String, CharSequence> getFuncByName(String name, ArticleContext context) {
-			switch (name) {
-				case "relativize":
-					return context::relativize;
-				case "embed":
-					return this::embed;
-				case "embedBase64":
-					return this::embedBase64;
-				default:
-					return null;
-			}
+			return switch (name) {
+				case "relativize" -> context::relativize;
+				case "embed" -> this::embed;
+				case "embedBase64" -> this::embedBase64;
+				default -> null;
+			};
 		}
 
 		@SneakyThrows
@@ -146,7 +135,7 @@ public class Templater {
 
 		@SneakyThrows
 		private void embed(String src, OutputStream os) {
-			try (var is = storage.read(src)) {
+			try (var is = resourceReader.apply(src)) {
 				is.transferTo(os);
 			}
 		}

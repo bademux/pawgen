@@ -1,6 +1,5 @@
 package net.pawet.pawgen.component.resource;
 
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
@@ -14,12 +13,9 @@ import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
-@RequiredArgsConstructor(staticName = "of")
-public final class ResourceFactory {
-
-	private final Storage storage;
-	private final ImageFactory imageFactory;
-	private final Set<String> hosts;
+public record ResourceFactory(Storage storage,
+							  ImageFactory imageFactory,
+							  Set<String> hosts) {
 
 	@SneakyThrows
 	public Map<String, String> createResource(String name, Category category, Map<String, String> attributes) {

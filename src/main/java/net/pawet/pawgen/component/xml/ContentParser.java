@@ -1,6 +1,7 @@
 package net.pawet.pawgen.component.xml;
 
 import lombok.Cleanup;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -28,13 +29,10 @@ import static net.pawet.pawgen.component.xml.XmlUtils.createXMLEventReader;
 import static net.pawet.pawgen.component.xml.XmlUtils.getWithPrefix;
 
 @Slf4j
-@RequiredArgsConstructor(staticName = "of")
-public class ContentParser {
+public record ContentParser(Storage storage,
+							ResourceFactory resourceFactory) {
 
 	public static final Set<String> ROOT_TAG_NAMES = Set.of("article", "gallery");
-
-	private final Storage storage;
-	private final ResourceFactory resourceFactory;
 
 	public CharSequence read(ArticleHeader header) {
 		resourceFactory.createAttachmentResource(header.getFile());
@@ -105,7 +103,7 @@ public class ContentParser {
 		@SneakyThrows
 		private void handleTag(StringBuilder sb, XMLEvent event, PawFilter filter) {
 			switch (event.getEventType()) {
-				case XMLStreamConstants.START_ELEMENT: {
+				case XMLStreamConstants.START_ELEMENT -> {
 					StartElement startElement = event.asStartElement();
 					QName qName = startElement.getName();
 					String name = qName.getLocalPart();
@@ -126,20 +124,19 @@ public class ContentParser {
 						sb.append('/');
 					}
 					sb.append('>');
-					break;
 				}
-				case XMLStreamConstants.END_ELEMENT:
+				case XMLStreamConstants.END_ELEMENT -> {
 					String name = event.asEndElement().getName().getLocalPart();
 					if (!isEmptyTag(name)) {
 						sb.append("</").append(name).append('>');
 					}
-					break;
-				case XMLStreamConstants.CHARACTERS:
+				}
+				case XMLStreamConstants.CHARACTERS -> {
 					Characters characters = event.asCharacters();
 					if (!characters.isIgnorableWhiteSpace()) {
 						characters.writeAsEncodedUnicode(new Writer() {
 							@Override
-							public void write(char[] cbuf, int off, int len) {
+							public void write(char @NonNull [] cbuf, int off, int len) {
 								sb.append(cbuf, off, len);
 							}
 
@@ -152,7 +149,7 @@ public class ContentParser {
 							}
 						});
 					}
-					break;
+				}
 			}
 		}
 

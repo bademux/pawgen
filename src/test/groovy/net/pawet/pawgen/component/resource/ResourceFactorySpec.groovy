@@ -9,7 +9,7 @@ class ResourceFactorySpec extends Specification {
 
 	Should "create handle link"() {
 		given:
-		def factory = ResourceFactory.of(null, null, ['localhost'] as Set)
+		def factory = new ResourceFactory(null, null, ['localhost'] as Set)
 		when:
 		def result = factory.handleLink(url)
 		then:
