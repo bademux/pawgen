@@ -25,6 +25,7 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.nio.file.FileVisitOption.FOLLOW_LINKS;
 import static java.util.Map.entry;
 import static java.util.stream.Collectors.toUnmodifiableSet;
+import static lombok.AccessLevel.PACKAGE;
 
 @Slf4j
 public class StaticFileService {
@@ -36,7 +37,7 @@ public class StaticFileService {
 	@NonNull
 	private final FileSystemRegistry fsRegistry;
 	private final BiPredicate<Instant, Instant> isNewOrUpdated;
-	@Getter(lazy = true)
+	@Getter(lazy = true, value = PACKAGE)
 	private final Set<Map.Entry<Path, Path>> staticFiles = createStaticFiles();
 
 	public StaticFileService(@NonNull Collection<URI> staticDirs, @NonNull Path outputDir, @NonNull FileSystemRegistry fsRegistry, @NonNull BiPredicate<Instant, Instant> isNewOrUpdated) {
