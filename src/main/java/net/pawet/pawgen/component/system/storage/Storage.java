@@ -4,12 +4,13 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import net.pawet.pawgen.component.Category;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -21,7 +22,6 @@ import static java.nio.file.Files.createDirectories;
 import static java.nio.file.Files.walk;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.Collections.reverseOrder;
-import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static lombok.AccessLevel.PACKAGE;
 import static net.pawet.pawgen.component.system.storage.Sha1DigestService.encode;
@@ -34,66 +34,69 @@ public class Storage {
 
 	private final Predicate<Path> isAttributeFile;
 	private final Sha1DigestService digestService;
-	private final LastBuildService lastBuildService;
 	private final Function<String, Optional<Path>> staticFileResolver;
 	private final Path contentDir;
 	private final Path outputDir;
 
-	public static Storage create(@NonNull Function<String, Optional<Path>> staticFileResolver, @NonNull LastBuildService lastBuildService, @NonNull Path contentDir, @NonNull Path outputDir) {
+	public static Storage create(@NonNull Function<String, Optional<Path>> staticFileResolver, @NonNull Path contentDir, @NonNull Path outputDir) {
 		var metaService = new MetaService();
 		var digestService = new Sha1DigestService(metaService);
-		return new Storage(metaService::isAttributeFile, digestService, lastBuildService, staticFileResolver, contentDir, outputDir);
-	}
-
-	@SneakyThrows
-	public CategoryAwareResource readArticleByCategory(String pathStr) {
-		Path path = contentDir.resolve(pathStr).resolve(ARTICLE_FILENAME);
-		var attrs = requireNonNull(readBasicAttributes(path), "Can't read file attributes for: " + path);
-		if (!attrs.isRegularFile()) {
-			throw new IllegalStateException("Root path is not the file: " + path);
-		}
-		return CategoryAwareResource.of(contentDir.relativize(path).getParent(), Resource.fromSrc(path, this));
+		return new Storage(metaService::isAttributeFile, digestService, staticFileResolver, contentDir, outputDir);
 	}
 
 	@SneakyThrows
 	public Stream<CategoryAwareResource> readChildren(String pathStr) {
-		return StreamSupport.stream(Files.newDirectoryStream(contentDir.resolve(pathStr), Files::isDirectory).spliterator(), false)
+		var directoryStream = Files.newDirectoryStream(contentDir.resolve(pathStr), Files::isDirectory);
+		return StreamSupport.stream(directoryStream.spliterator(), false)
 			.map(p -> p.resolve(ARTICLE_FILENAME))
-			.filter(p -> {
-				var attrs = readBasicAttributes(p);
-				return attrs != null && attrs.isRegularFile();
-			})
-			.map(p -> CategoryAwareResource.of(contentDir.relativize(p).getParent(), Resource.fromSrc(p, this)));
-
+			.filter(Files::exists)
+			.filter(Files::isRegularFile)
+			.map(p -> new CategoryAwareResource(Category.of(contentDir.relativize(p).getParent()), p, this))
+			.onClose(() -> {
+				try {
+					directoryStream.close();
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
 	}
 
-	private static BasicFileAttributes readBasicAttributes(Path path) {
-		try {
-			return Files.getFileAttributeView(path, BasicFileAttributeView.class).readAttributes();
-		} catch (IOException ignore) {
-			return null;
-		}
+	public SimpleResource resource(Path src, String dest) {
+		return Optional.ofNullable(src)
+			.filter(Files::exists)
+			.filter(Files::isRegularFile)
+			.map(path -> new SimpleResource(path, resolveOutputDir(dest), this))
+			.orElseThrow();
 	}
 
-	public InputStream read(String src) {
-		return read(resolveReadDir(src).normalize());
-	}
-
-	public Optional<Resource> resource(String rootRelativePath) {
+	public SimpleResource resource(String rootRelativePath) {
 		return Optional.ofNullable(rootRelativePath)
 			.filter(not(String::isBlank))
 			.map(this::resolveReadDir)
 			.filter(Files::isRegularFile)
-			.map(Path::normalize)
-			.map(path -> Resource.from(path, resolveOutputDir(rootRelativePath), rootRelativePath, this));
+			.map(path -> new SimpleResource(path, resolveOutputDir(rootRelativePath), this))
+			.orElseThrow();
+	}
+
+	public CategoryAwareResource resource(Category category) {
+		return Optional.ofNullable(category)
+			.map(Category::toString)
+			.map(contentDir::resolve)
+			.map(c -> c.resolve(ARTICLE_FILENAME))
+			.filter(Files::exists)
+			.filter(Files::isRegularFile)
+			.map(path -> new CategoryAwareResource(category, path, this))
+			.orElseThrow();
 	}
 
 	Path resolveReadDir(String pathStr) {
 		if (pathStr.startsWith("/")) {
-			return staticFileResolver.apply(pathStr.substring(1))
-				.orElseGet(() -> contentDir.resolve(pathStr));
+			String relPathStr = pathStr.substring(1);
+			return staticFileResolver.apply(relPathStr)
+				.orElseGet(() -> contentDir.resolve(relPathStr))
+				.normalize();
 		}
-		return contentDir.resolve(pathStr);
+		return contentDir.resolve(pathStr).normalize();
 	}
 
 	@SneakyThrows
@@ -102,11 +105,11 @@ public class Storage {
 		return new BufferedInputStream(Files.newInputStream(path, READ));
 	}
 
-	public OutputStream write(String dest) {
-		return write(resolveOutputDir(dest).normalize());
+	public InputStream readFromInput(String relativeToRoot) {
+		return read(resolveReadDir(relativeToRoot));
 	}
 
-	public Path resolveOutputDir(String pathStr) {
+	Path resolveOutputDir(String pathStr) {
 		if (pathStr.length() > 1 && pathStr.startsWith("/")) {
 			pathStr = pathStr.substring(1);
 		}
@@ -114,7 +117,7 @@ public class Storage {
 	}
 
 	@SneakyThrows
-	public OutputStream write(Path dest) {
+	OutputStream write(Path dest) {
 		assert dest.isAbsolute() : "expecting absolute path";
 		return digestService.write(dest, this::newOutputStream);
 	}
@@ -132,19 +135,19 @@ public class Storage {
 	}
 
 	public Stream<DigestAwareResource> readOutputDir() {
-		return readOutputDirInternal().map(this::createDigestAwareResource);
+		return readOutputDirInternal().map(this::createDigestAwareData);
 	}
 
-	private DigestAwareResource createDigestAwareResource(Path path) {
-		Path relPath = outputDir.relativize(path);
-		Resource resource = Resource.fromSrcWithRelPath(path, relPath, this);
-		return DigestAwareResource.of(digestService.load(path), resource);
+	private DigestAwareResource createDigestAwareData(Path path) {
+		return DigestAwareResource.of(digestService.load(path), path, outputDir.relativize(path), this);
 	}
 
 	@SneakyThrows
 	public boolean cleanupOutDirIfNeeded() {
 		if (Files.exists(outputDir)) {
-			walk(outputDir).sorted(reverseOrder()).forEach(Storage::delete);
+			try (var files = walk(outputDir).sorted(reverseOrder())) {
+				files.forEach(Storage::delete);
+			}
 			return true;
 		}
 		return false;
@@ -190,15 +193,12 @@ public class Storage {
 		}
 	}
 
-	@SneakyThrows
-	public boolean isNewOrChanged(String category) {
-		Path path = resolveReadDir(category).resolve(ARTICLE_FILENAME).normalize();
-		var attrs = Files.getFileAttributeView(path, BasicFileAttributeView.class).readAttributes();
-		return lastBuildService.isNewOrUpdated(attrs.lastModifiedTime().toInstant(), attrs.creationTime().toInstant());
-	}
-
-	public void timestamp() {
-		lastBuildService.timestamp();
+	Instant getModificationDate(Path file) {
+		try {
+			return Files.getLastModifiedTime(file).toInstant();
+		} catch (IOException e) {
+			return Instant.MIN;
+		}
 	}
 
 }

@@ -1,18 +1,20 @@
 package net.pawet.pawgen.component;
 
 import lombok.SneakyThrows;
+import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.netlify.DeployerFactory;
+import net.pawet.pawgen.component.netlify.FileDigestData;
 import net.pawet.pawgen.component.render.ArticleHeaderQuery;
 import net.pawet.pawgen.component.render.Renderer;
 import net.pawet.pawgen.component.render.Templater;
 import net.pawet.pawgen.component.resource.ResourceFactory;
-import net.pawet.pawgen.component.resource.img.ImageFactory;
+import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
 import net.pawet.pawgen.component.resource.img.WatermarkFilterFactory;
 import net.pawet.pawgen.component.system.CliOptions;
 import net.pawet.pawgen.component.system.ProcessingExecutorService;
 import net.pawet.pawgen.component.system.storage.*;
-import net.pawet.pawgen.component.xml.ContentParser;
+import net.pawet.pawgen.component.xml.ArticleParser;
 
 import java.nio.file.Path;
 import java.util.function.Consumer;
@@ -25,29 +27,31 @@ public record Pawgen(ProcessingExecutorService processingExecutor,
 					 FileSystemRegistry fsRegistry,
 					 Storage storage,
 					 StaticFileService staticFileService,
-					 Consumer<Stream<DigestAwareResource>> deployer) implements AutoCloseable {
+					 Consumer<Stream<FileDigestData>> deployer) implements AutoCloseable {
 
 	public static Pawgen create(CliOptions opts) {
 		var fsRegistry = new FileSystemRegistry();
 		Path outputDir = fsRegistry.getPathFsRegistration(opts.getOutputUri());
-		var lastBuildService = LastBuildService.create(opts.getDateFrom(), outputDir);
-		var staticFileService = new StaticFileService(opts.getStaticUris(), outputDir, fsRegistry, lastBuildService::isNewOrUpdated);
-		var storage = Storage.create(staticFileService::resolve, lastBuildService, fsRegistry.getPathFsRegistration(opts.getContentUri()), outputDir);
-		var imageFactory = new ImageFactory(new WatermarkFilterFactory(fsRegistry).create(opts.getWatermarkText(), opts.getWatermarkUri()));
+		var staticFileService = new StaticFileService(opts.getStaticUris(), fsRegistry);
+		var storage = Storage.create(staticFileService::resolve, fsRegistry.getPathFsRegistration(opts.getContentUri()), outputDir);
+		var watermarkFilter = new WatermarkFilterFactory(fsRegistry).create(opts.getWatermarkText(), opts.getWatermarkUri());
+		var imageFactory = new ProcessableImageFactory(watermarkFilter);
 		var processingExecutor = new ProcessingExecutorService(Runtime.getRuntime().availableProcessors());
-		var imageParser = new ResourceFactory(storage, imageFactory, opts.getHosts());
-		var contentReader = new ContentParser(storage, imageParser);
-		var templater = new Templater(storage::read, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()));
-		var queryService = new ArticleHeaderQuery(storage);
-		var renderer = Renderer.of(templater, queryService, processingExecutor, contentReader::read, storage);
+		var resourceFactory = new ResourceFactory(storage, imageFactory, opts.getHosts());
+		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()));
+		var queryService = new ArticleHeaderQuery(storage, new ArticleParser(resourceFactory));
+		var renderer = Renderer.of(templater, queryService, processingExecutor);
 		var deployerFactory = new DeployerFactory(opts.getNetlifyUrl(), opts.getAccessToken(), opts.getSiteId());
 		return new Pawgen(processingExecutor, queryService, renderer, fsRegistry, storage, staticFileService, deployerFactory.create(opts.isNetlifyEnabled()));
 	}
 
 	public void deploy() {
 		try (var items = storage.readOutputDir()) {
-			deployer.accept(items);
+			deployer.accept(items.map(DigestAwareResourceFile::new));
 		}
+	}
+
+	private record DigestAwareResourceFile(@Delegate(types = FileDigestData.class) DigestAwareResource resource) implements FileDigestData {
 	}
 
 	public void render() {
@@ -61,12 +65,15 @@ public record Pawgen(ProcessingExecutorService processingExecutor,
 
 	public void copyStaticResources() {
 		log.info("Copying static resources");
-		staticFileService.copyStaticResources(storage::write);
-	}
-
-	public void timestamp() {
-		log.info("Timestamp build");
-		storage.timestamp();
+		staticFileService.copyStaticResources(storage::resource)
+			.filter(SimpleResource::isNewOrChanged)
+			.forEach(res -> {
+				try {
+					res.transfer();
+				} catch (Exception e) {
+					log.error("Can't copy resource '{}'", res, e);
+				}
+			});
 	}
 
 	@Override

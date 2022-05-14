@@ -24,6 +24,18 @@ public final class Category implements Comparable<Category> {
 	@Getter(lazy = true, value = PRIVATE)
 	private final String asString = createStringValue();
 
+	public static Category of(Path categoryPath) {
+		if (categoryPath == null) {
+			return Category.ROOT;
+		}
+
+		var categories = new String[categoryPath.getNameCount()];
+		for (int i = 0; i < categories.length; i++) {
+			categories[i] = categoryPath.getName(i).toString();
+		}
+		return Category.of(categories);
+	}
+
 	public static Category of(String... parts) {
 		if (requireNonNull(parts, "Categories can't be empty").length == 0) {
 			return ROOT;

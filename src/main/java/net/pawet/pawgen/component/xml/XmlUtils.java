@@ -7,6 +7,7 @@ import javax.xml.namespace.QName;
 import javax.xml.stream.EventFilter;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
 import java.io.*;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -16,19 +17,18 @@ class XmlUtils {
 
 	private static final XMLInputFactory factory = createXmlInputFactory();
 
-	private static XMLInputFactory createXmlInputFactory() {
+	static XMLInputFactory createXmlInputFactory() {
 		XMLInputFactory factory = XMLInputFactory.newInstance();
 		factory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, false);
 		return factory;
 	}
 
-	@SneakyThrows
-	public static XMLEventReader createXMLEventReader(InputStream is) {
-		return factory.createXMLEventReader(skipBOM(is));
+	static XMLEventReader createXMLEventReader(InputStream is) throws IOException, XMLStreamException {
+		return factory.createXMLEventReader(skipBOM(new InputStreamReader(is, UTF_8)));
 	}
 
-	private static Reader skipBOM(InputStream is) throws IOException {
-		var in = new BufferedReader(new InputStreamReader(is, UTF_8));
+	static Reader skipBOM(Reader reader) throws IOException {
+		var in = new BufferedReader(reader);
 		in.mark(1);
 		if (in.read() != 0xFEFF) {
 			in.reset();
@@ -46,3 +46,4 @@ class XmlUtils {
 	}
 
 }
+

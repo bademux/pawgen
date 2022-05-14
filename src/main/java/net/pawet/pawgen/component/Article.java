@@ -2,12 +2,12 @@ package net.pawet.pawgen.component;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import net.pawet.pawgen.component.system.storage.ArticleResource;
+import net.pawet.pawgen.component.system.storage.Resource;
 
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharsetEncoder;
 import java.time.Instant;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -17,7 +17,9 @@ import static lombok.AccessLevel.PRIVATE;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @RequiredArgsConstructor(access = PRIVATE)
 @Slf4j
-public final class ArticleHeader implements Comparable<ArticleHeader> {
+public final class Article implements Comparable<Article> {
+
+	private final Resource resource;
 	@Getter
 	@ToString.Include
 	@EqualsAndHashCode.Include
@@ -40,24 +42,27 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 	@Getter
 	private final String author;
 	@Getter
-	private final String date;
+	private final Instant date;
 	@Getter
 	private final String source;
 	@Getter
 	private final String file;
 	@Getter
 	private final String fileExt;
-	private final Instant lastModifiedTime;
 	@Getter
 	@NonNull
 	private final String url;
 
-	public static ArticleHeader of(Category category, String type, String lang, String title, String author, String date, String source, String file, Instant lastModifiedTime) {
-		return new ArticleHeader(category, type, lang, title, author, date, source, file, parseFileExt(file), lastModifiedTime, createUrl(category, title));
+	public static Article of(ArticleResource resource, Category category, String type, String lang, String title, String author, Instant date, String source, String file) {
+		if (Instant.MIN.equals(date)) {
+			var modificationDate = resource.getModificationDate();
+			date = Instant.MIN.equals(modificationDate) ? date : modificationDate;
+		}
+		return new Article(resource, category, type, lang, title, author, date, source, file, parseFileExt(file), resource.getUrl());
 	}
 
 	@Override
-	public int compareTo(ArticleHeader o) {
+	public int compareTo(Article o) {
 		int categoryRes = category.compareTo(o.category);
 		if (categoryRes != 0) {
 			return categoryRes;
@@ -80,15 +85,15 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 		return file.substring(dotIndex + 1).toLowerCase();
 	}
 
-	public boolean isSameCategory(ArticleHeader articleHeader) {
-		return category.equals(articleHeader.category);
+	public boolean isSameCategory(Article article) {
+		return category.equals(article.category);
 	}
 
-	public boolean isSameLang(ArticleHeader articleHeader) {
-		return lang.equals(articleHeader.lang);
+	public boolean isSameLang(Article article) {
+		return lang.equals(article.lang);
 	}
 
-	public boolean isChildFor(ArticleHeader parent) {
+	public boolean isChildFor(Article parent) {
 		return category.isChildFor(parent.getCategory());
 	}
 
@@ -109,37 +114,15 @@ public final class ArticleHeader implements Comparable<ArticleHeader> {
 		return url;
 	}
 
-	private static final CharsetEncoder CODER = UTF_8.newEncoder();
-	private static final String EXT = ".html";
-
-	static String createUrl(Category category, String title) {
-		int maxTitleLength = 255 - EXT.length();
-		title = '/' + normalizeTitle(title, maxTitleLength) + EXT;
-		String url = category.isRoot() ? title : '/' + category.toString() + title;
-		url = replaceUnwantedChars(url);
-		URI uri = URI.create(url);
-		assert !uri.isAbsolute() : "uri should be absolute: " + uri;
-		return uri.toString();
-	}
-
-	private static String replaceUnwantedChars(String url) {
-		return url.replaceAll("[:*?<>|]", "_")
-			.replace(' ', '_')
-			.replace('"', '\'');
-	}
-
-	static String normalizeTitle(String title, int maxTitleLength) {
-		int titleLength = title.getBytes(UTF_8).length;
-		if (titleLength > maxTitleLength) {
-			title = splitStringByByteLength(title, maxTitleLength);
+	@SneakyThrows
+	public CharSequence readContent() {
+		try (var is = resource.inputStream()) {
+			return new String(is.readAllBytes(), UTF_8);
 		}
-		return title;
 	}
 
-	static String splitStringByByteLength(String src, int size) {
-		ByteBuffer out = ByteBuffer.allocate(size);
-		CODER.encode(CharBuffer.wrap(src), out, true);
-		return new String(out.array(), 0, out.position(), UTF_8);
+	public Writer writer() {
+		return new OutputStreamWriter(resource.outputStream(), UTF_8);
 	}
 
 }

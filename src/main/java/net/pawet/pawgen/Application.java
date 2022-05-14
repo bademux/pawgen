@@ -27,7 +27,6 @@ public class Application {
 			Runtime.getRuntime().addShutdownHook(new Thread(app::close));
 			app.render();
 			app.copyStaticResources();
-			app.timestamp();
 			log.info("Built in {} min", Duration.ofMillis(CLOCK.millis() - start).toMinutes());
 			app.deploy();
 		} catch (Throwable e) {

@@ -1,11 +1,10 @@
 package net.pawet.pawgen.component.resource.img;
 
-import lombok.Cleanup;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.component.resource.Processable;
+import net.pawet.pawgen.component.system.storage.ImageResource;
 
 import javax.imageio.*;
 import javax.imageio.metadata.IIOMetadata;
@@ -19,6 +18,7 @@ import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static java.awt.RenderingHints.*;
 import static java.lang.Math.round;
@@ -26,17 +26,17 @@ import static java.util.Objects.requireNonNull;
 import static javax.imageio.metadata.IIOMetadataFormatImpl.standardMetadataFormatName;
 
 @Slf4j
-final class ImageWithThumbnailProcessable extends Processable<ImageResource> {
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
+final class ImageWithThumbnailProcessable implements Supplier<Map<String, String>> {
 
 	private final int thumbnailWidth = 250;
+
+	@EqualsAndHashCode.Include
+	private final ImageResource resource;
+	@ToString.Include
+	private final Map<String, String> attributes;
 	private final Consumer<BufferedImage> watermarkFilter;
 	private final Category category;
-
-	ImageWithThumbnailProcessable(ImageResource resource, Map<String, String> attrs, Consumer<BufferedImage>watermarkFilter, Category category) {
-		super(resource, attrs);
-		this.watermarkFilter = watermarkFilter;
-		this.category = category;
-	}
 
 	@SneakyThrows
 	@Override
@@ -51,11 +51,12 @@ final class ImageWithThumbnailProcessable extends Processable<ImageResource> {
 		} catch (Exception e) {
 			log.warn("Can't process image, just coping", e);
 		}
-		return super.get();
+		Processable.transferSilently(resource);
+		return attributes;
 	}
 
 	private Map<String, String> processImage(Dimension dimension) {
-		super.get();
+		Processable.transferSilently(resource);
 		var calcDimensions = parseDimensions(dimension, getDimensionAttr("width", attributes), getDimensionAttr("height", attributes));
 		return imageAttributes(calcDimensions, category.relativize(resource.getSrc()));
 	}
@@ -95,7 +96,7 @@ final class ImageWithThumbnailProcessable extends Processable<ImageResource> {
 	private Map<String, String> processImageWithThumbnail(AdvBufferedImage img, Dimension dimension) {
 		var thumbnailDimension = getThumbnailDimension(dimension);
 		String srcBase64 = "data:image/" + img.formatName + ";base64," + processThumbnail(img, thumbnailDimension);
-		processWatermark(img    );
+		processWatermark(img);
 		return thumbnailAttributes(thumbnailDimension, srcBase64);
 	}
 
@@ -254,9 +255,6 @@ final class ImageWithThumbnailProcessable extends Processable<ImageResource> {
 		}
 	}
 
-	@RequiredArgsConstructor
-	private static final class AdvBufferedImage {
-		final BufferedImage image;
-		final String formatName;
+		private record AdvBufferedImage(BufferedImage image, String formatName) {
 	}
 }

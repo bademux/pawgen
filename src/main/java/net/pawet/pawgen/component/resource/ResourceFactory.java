@@ -3,7 +3,8 @@ package net.pawet.pawgen.component.resource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
-import net.pawet.pawgen.component.resource.img.ImageFactory;
+import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
+import net.pawet.pawgen.component.system.storage.ImageResource;
 import net.pawet.pawgen.component.system.storage.Storage;
 
 import java.net.URI;
@@ -11,17 +12,18 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 @Slf4j
 public record ResourceFactory(Storage storage,
-							  ImageFactory imageFactory,
+							  ProcessableImageFactory processableImageFactory,
 							  Set<String> hosts) {
 
 	@SneakyThrows
 	public Map<String, String> createResource(String name, Category category, Map<String, String> attributes) {
 		try {
 			return create(name, category, attributes)
-				.map(Processable::get)
+				.map(Supplier::get)
 				.orElse(attributes);
 		} catch (Exception e) {
 			log.warn("Error while processing file '{}' in '{}'", name, category);
@@ -29,23 +31,24 @@ public record ResourceFactory(Storage storage,
 		return attributes;
 	}
 
-	private Optional<Processable<?>> create(String name, Category category, Map<String, String> attributes) {
-		switch (name) {
-			case "img":
-				return Optional.ofNullable(attributes.get("src"))
-					.map(this::handleLink)
-					.map(category::resolve)
-					.flatMap(storage::resource)
-					.map(resource -> imageFactory.create(attributes, category, resource));
-			case "a":
-				return Optional.ofNullable(attributes.get("href"))
-					.map(this::handleLink)
-					.map(category::resolve)
-					.flatMap(storage::resource)
-					.map(resource -> new Processable<>(resource, attributes));
-			default:
-				return Optional.empty();
-		}
+	private Optional<Supplier<Map<String, String>>> create(String name, Category category, Map<String, String> attributes) {
+		return switch (name) {
+			case "img" -> Optional.ofNullable(attributes.get("src"))
+				.map(this::handleLink)
+				.map(category::resolve)
+				.map(this::imageResource)
+				.map(res -> processableImageFactory.create(attributes, category, res));
+			case "a" -> Optional.ofNullable(attributes.get("href"))
+				.map(this::handleLink)
+				.map(category::resolve)
+				.map(storage::resource)
+				.map(resource -> new Processable(resource, attributes));
+			default -> Optional.empty();
+		};
+	}
+
+	private ImageResource imageResource(String rootRelativePath) {
+		return ImageResource.of(storage.resource(rootRelativePath), rootRelativePath);
 	}
 
 	String handleLink(String urlStr) {
@@ -63,8 +66,7 @@ public record ResourceFactory(Storage storage,
 	}
 
 	public void createAttachmentResource(String src) {
-		storage.resource(src).map(Processable::noAttributes)
-			.ifPresent(Processable::get);
+		Processable.noAttributes(storage.resource(src));
 	}
 
 }

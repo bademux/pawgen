@@ -16,11 +16,11 @@ class StaticFileServiceSpec extends Specification {
 		var testFile = outputDir.resolve('text.txt')
 		Files.writeString(testFile, 'test')
 		var fsRegistry = new FileSystemRegistry()
-		var service = new StaticFileService([testFile.toUri()], outputDir, fsRegistry, { true })
+		var service = new StaticFileService([testFile.toUri()], fsRegistry)
 		when:
 		var files = service.getStaticFiles()
 		then:
-		files.collectEntries({ [(it.key as String): it.value as String] }) == ['/text.txt': '/text.txt']
+		files.collectEntries({ [(it.key as String): it.value as String] }) == ['/text.txt': 'text.txt']
 	}
 
 	@AutoCleanup

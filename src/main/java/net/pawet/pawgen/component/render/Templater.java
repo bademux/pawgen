@@ -1,7 +1,6 @@
 package net.pawet.pawgen.component.render;
 
 import com.github.mustachejava.*;
-import com.github.mustachejava.MustacheResolver;
 import com.github.mustachejava.reflect.BaseObjectHandler;
 import com.github.mustachejava.util.Wrapper;
 import lombok.SneakyThrows;
@@ -12,7 +11,6 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -30,7 +28,7 @@ public class Templater {
 
 	public Templater(Function<String, InputStream> resourceReader, Path templateDir) {
 		this.resourceReader = resourceReader;
-		MustacheResolver mustacheResolver = ((Function<String, Path>)templateDir::resolve).andThen(Templater::resolveTemplate)::apply;
+		MustacheResolver mustacheResolver = ((Function<String, Path>) templateDir::resolve).andThen(Templater::resolveTemplate)::apply;
 		var mf = new DefaultMustacheFactory(mustacheResolver);
 		mf.setObjectHandler(new PawgenObjectHandler());
 		this.mustache = mf.compile(TEMPLATE_NAME + DEFAULT_EXT);
@@ -41,8 +39,8 @@ public class Templater {
 		return newBufferedReader(template, UTF_8);
 	}
 
-	public Writer render(Writer writer, Object context, Callable<CharSequence> contentProvider) {
-		return mustache.execute(writer, new Object[]{context, contentProvider});
+	public void render(Writer writer, Object... context) {
+		mustache.execute(writer, context);
 	}
 
 	final class PawgenObjectHandler extends BaseObjectHandler {
@@ -121,16 +119,24 @@ public class Templater {
 
 		@SneakyThrows
 		private CharSequence embedBase64(String src) {
-			var bos = new ByteArrayOutputStream(1024);
-			embed(src, BASE64_ENCODER.wrap(bos));
-			return bos.toString();
+			try {
+				var bos = new ByteArrayOutputStream(1024);
+				embed(src, BASE64_ENCODER.wrap(bos));
+				return bos.toString();
+			} catch (Exception e) {
+				return e.getMessage();
+			}
 		}
 
 		@SneakyThrows
 		private CharSequence embed(String src) {
-			var os = new ByteArrayOutputStream(1024);
-			embed(src, os);
-			return os.toString(UTF_8);
+			try {
+				var os = new ByteArrayOutputStream(1024);
+				embed(src, os);
+				return os.toString(UTF_8);
+			} catch (Exception e) {
+				return e.getMessage();
+			}
 		}
 
 		@SneakyThrows

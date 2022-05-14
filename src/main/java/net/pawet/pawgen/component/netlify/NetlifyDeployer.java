@@ -20,7 +20,7 @@ import static java.util.stream.Collectors.*;
 import static lombok.AccessLevel.PRIVATE;
 
 @Slf4j
-class NetlifyDeployer<T extends FileDigest & FileData> {
+class NetlifyDeployer {
 
 	private static final String DEPLOYMENT_TITLE = "pawgen_deployer";
 	private final NetlifyClient netlifyClient;
@@ -33,7 +33,7 @@ class NetlifyDeployer<T extends FileDigest & FileData> {
 	}
 
 	@SneakyThrows
-	public final void deploy(Stream<T> files) {
+	public final <T extends FileDigest & FileData> void deploy(Stream<T> files) {
 		var toBeDeployed = files.collect(toList());
 		retrier.deployWithRetry(new Deployer<>(this, toBeDeployed)::deploy);
 		log.debug("Deployed {} files", toBeDeployed.size());
@@ -45,7 +45,7 @@ class NetlifyDeployer<T extends FileDigest & FileData> {
 			.map(d -> d.getString("state"));
 	}
 
-	Optional<String> createDeploy(Collection<T> values) {
+	Optional<String> createDeploy(Collection<? extends FileDigest> values) {
 		return netlifyClient.siteDeploy(siteId).createAsync(DEPLOYMENT_TITLE, values).map(obj -> obj.getString("id"));
 	}
 
@@ -59,7 +59,7 @@ class NetlifyDeployer<T extends FileDigest & FileData> {
 	 * @return true if everything is uploaded successfully
 	 */
 	@SneakyThrows
-	long uploadFiles(String deployId, Collection<T> files) {
+	long uploadFiles(String deployId, Collection<? extends FileData> files) {
 		var deployOp = netlifyClient.deploy(deployId);
 		return files.stream()
 			.mapToLong(value -> upload(deployOp, value))
@@ -67,7 +67,7 @@ class NetlifyDeployer<T extends FileDigest & FileData> {
 			.count();
 	}
 
-	private long upload(NetlifyClient.DeployOperation deployOp, T value) {
+	private long upload(NetlifyClient.DeployOperation deployOp, FileData value) {
 		long size = deployOp.upload(value);
 		log.debug("Uploaded {}Kb", size / 1024);
 		return size;
@@ -100,7 +100,7 @@ class NetlifyDeployer<T extends FileDigest & FileData> {
 @AllArgsConstructor(access = PRIVATE)
 final class Deployer<T extends FileDigest & FileData> {
 
-	private final NetlifyDeployer<T> client;
+	private final NetlifyDeployer client;
 	private final Collection<T> files;
 	private final Map<String, T> unique;
 
@@ -110,11 +110,11 @@ final class Deployer<T extends FileDigest & FileData> {
 		return files.stream().collect(toMap(FileDigest::getDigest, Function.identity(), (t, __) -> t));
 	}
 
-	Deployer(NetlifyDeployer<T> client, Collection<T> files) {
+	Deployer(NetlifyDeployer client, Collection<T> files) {
 		this(client, files, createUnique(files), null);
 	}
 
-	Deployer(NetlifyDeployer<T> client, Collection<T> files, String deployId) {
+	Deployer(NetlifyDeployer client, Collection<T> files, String deployId) {
 		this(client, files, createUnique(files), deployId);
 	}
 
