@@ -137,4 +137,6 @@ public final class Category implements Comparable<Category> {
 	public boolean endsWith(String pathPart) {
 		return toString().endsWith(pathPart);
 	}
+
+
 }

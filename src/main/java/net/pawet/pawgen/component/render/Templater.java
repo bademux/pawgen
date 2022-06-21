@@ -94,6 +94,7 @@ public class Templater {
 			return switch (name) {
 				case "author" -> context.getAuthor();
 				case "category" -> context.getCategory();
+				case "isRootCategory" -> context.getCategory().isRoot();
 				case "date" -> context.getDate();
 				case "file" -> context.getFile();
 				case "fileExt" -> context.getFileExt();
