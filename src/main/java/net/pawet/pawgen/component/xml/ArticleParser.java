@@ -14,19 +14,16 @@ import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 import java.io.ByteArrayInputStream;
-import java.time.Instant;
-import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.SignStyle;
+import java.time.temporal.ChronoField;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.time.ZoneOffset.UTC;
-import static java.time.temporal.ChronoField.*;
 import static java.util.Spliterator.*;
 import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.StreamSupport.stream;
@@ -107,33 +104,26 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 		return getTagValueOrDefault(startElement, qNameSample.getNamespaceURI(), "author", qNameSample.getPrefix());
 	}
 
-	static Instant getDate(StartElement startElement, QName qNameSample) {
-		String date = getTagValueOrDefault(startElement, qNameSample.getNamespaceURI(), "date", qNameSample.getPrefix());
-		return parseDate(date);
+	static ZonedDateTime getDate(StartElement startElement, QName qNameSample) {
+		return parseDate(getTagValueOrDefault(startElement, qNameSample.getNamespaceURI(), "date", qNameSample.getPrefix()));
 	}
 
-	private static final DateTimeFormatter DATE_FORMATTER_DDMMYYYY = new DateTimeFormatterBuilder()
-		.appendValue(DAY_OF_MONTH, 2)
-		.appendLiteral('-')
-		.appendValue(MONTH_OF_YEAR, 2)
-		.appendLiteral('-')
-		.appendValue(YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
-		.toFormatter();
+	private static final DateTimeFormatter DATE_FORMATTER = new DateTimeFormatterBuilder()
+		.appendPattern("[dd-MM-yyyy][yyyy-MM-dd][dd.MM.yyyy][yyyy.MM.dd]['T'][ ][HH:mm][X]")
+		.parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
+		.parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+		.toFormatter()
+		.withZone(ZoneOffset.UTC);
 
-	static Instant parseDate(String date) {
-		return Stream.of(DateTimeFormatter.ISO_DATE,
-			DATE_FORMATTER_DDMMYYYY
-		).map(formatter -> {
+	static ZonedDateTime parseDate(String date) {
+		if (date != null) {
 			try {
-				return formatter.parse(date);
+				return DATE_FORMATTER.parse(date, ZonedDateTime::from);
 			} catch (Exception e) {
-				return null;
+				log.error("Can't parse date '{}'", date, e);
 			}
-		}).filter(Objects::nonNull).findAny()
-			.map(LocalDate::from)
-			.map(LocalDate::atStartOfDay)
-			.map(localDate -> localDate.toInstant(UTC))
-			.orElse(Instant.MIN);
+		}
+		return null;
 	}
 
 	static String getSource(StartElement startElement, QName qNameSample) {

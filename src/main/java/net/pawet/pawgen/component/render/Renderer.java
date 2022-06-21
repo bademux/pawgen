@@ -1,11 +1,14 @@
 package net.pawet.pawgen.component.render;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Synchronized;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
 
-import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -105,7 +108,7 @@ public class Renderer {
 			return header.getCategory();
 		}
 
-		Instant getDate() {
+		ZonedDateTime getDate() {
 			return header.getDate();
 		}
 
@@ -153,6 +156,7 @@ public class Renderer {
 			}
 			return SUPPORTED_LANGS.stream().map(articleByLang::get).filter(Objects::nonNull).findAny();
 		}
+
 	}
 
 	private static final List<String> SUPPORTED_LANGS = List.of("by", "en", "pl", "ru");

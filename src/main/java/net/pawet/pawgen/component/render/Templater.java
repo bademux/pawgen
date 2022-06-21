@@ -7,9 +7,10 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.render.Renderer.ArticleContext;
 
-import java.io.*;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.Writer;
 import java.nio.file.Path;
-import java.util.Base64;
 import java.util.List;
 import java.util.function.Function;
 
@@ -19,7 +20,6 @@ import static java.nio.file.Files.newBufferedReader;
 @Slf4j
 public class Templater {
 
-	private final static Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
 	private static final String DEFAULT_EXT = ".mustache";
 	private static final String TEMPLATE_NAME = "index.html";
 
@@ -94,7 +94,6 @@ public class Templater {
 			return switch (name) {
 				case "author" -> context.getAuthor();
 				case "category" -> context.getCategory();
-				case "isRootCategory" -> context.getCategory().isRoot();
 				case "date" -> context.getDate();
 				case "file" -> context.getFile();
 				case "fileExt" -> context.getFileExt();
@@ -104,6 +103,7 @@ public class Templater {
 				case "type" -> context.getType();
 				case "url" -> context.getUrl();
 				case "children" -> context.getChildren();
+				case "hasChildren" -> context.getChildren().hasNext();
 				case "otherLangArticle" -> context.getOtherLangArticle();
 				default -> null;
 			};
@@ -112,40 +112,12 @@ public class Templater {
 		private Function<String, CharSequence> getFuncByName(String name, ArticleContext context) {
 			return switch (name) {
 				case "relativize" -> context::relativize;
-				case "embed" -> this::embed;
-				case "embedBase64" -> this::embedBase64;
-				default -> null;
+				case "embed" -> s -> TemplateFunctions.embed(resourceReader, s);
+				case "format" -> TemplateFunctions::format;
+				default -> throw new UnsupportedOperationException("unknown function: " + name + " in " + context);
 			};
 		}
 
-		@SneakyThrows
-		private CharSequence embedBase64(String src) {
-			try {
-				var bos = new ByteArrayOutputStream(1024);
-				embed(src, BASE64_ENCODER.wrap(bos));
-				return bos.toString();
-			} catch (Exception e) {
-				return e.getMessage();
-			}
-		}
-
-		@SneakyThrows
-		private CharSequence embed(String src) {
-			try {
-				var os = new ByteArrayOutputStream(1024);
-				embed(src, os);
-				return os.toString(UTF_8);
-			} catch (Exception e) {
-				return e.getMessage();
-			}
-		}
-
-		@SneakyThrows
-		private void embed(String src, OutputStream os) {
-			try (var is = resourceReader.apply(src)) {
-				is.transferTo(os);
-			}
-		}
 
 		@Override
 		public Binding createBinding(final String name, TemplateContext tc, Code code) {
@@ -160,4 +132,5 @@ public class Templater {
 			};
 		}
 	}
+
 }

@@ -5,10 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
 import net.pawet.pawgen.component.system.storage.Resource;
 
-import java.io.*;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static lombok.AccessLevel.PRIVATE;
@@ -42,7 +44,7 @@ public final class Article implements Comparable<Article> {
 	@Getter
 	private final String author;
 	@Getter
-	private final Instant date;
+	private final ZonedDateTime date;
 	@Getter
 	private final String source;
 	@Getter
@@ -53,10 +55,9 @@ public final class Article implements Comparable<Article> {
 	@NonNull
 	private final String url;
 
-	public static Article of(ArticleResource resource, Category category, String type, String lang, String title, String author, Instant date, String source, String file) {
-		if (Instant.MIN.equals(date)) {
-			var modificationDate = resource.getModificationDate();
-			date = Instant.MIN.equals(modificationDate) ? date : modificationDate;
+	public static Article of(ArticleResource resource, Category category, String type, String lang, String title, String author, ZonedDateTime date, String source, String file) {
+		if (date == null) {
+			date = ZonedDateTime.ofInstant(resource.getModificationDate(), ZoneOffset.UTC);
 		}
 		return new Article(resource, category, type, lang, title, author, date, source, file, parseFileExt(file), resource.getUrl());
 	}
