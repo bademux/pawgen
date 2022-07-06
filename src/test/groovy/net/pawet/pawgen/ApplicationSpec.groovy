@@ -6,8 +6,6 @@ import util.PawgenFs
 
 import java.lang.Void as Should
 import java.nio.file.Path
-import java.nio.file.attribute.FileTime
-import java.time.Instant
 
 import static java.nio.file.Files.*
 import static java.time.Instant.EPOCH
@@ -142,76 +140,4 @@ Content:
 		]
 	}
 
-	Should 'rebuild changed only'() {
-		given: 'filesystem'
-		PawgenFs pawFs = PawgenFs.unixWithUserAttrs()
-		Path outputDir = pawFs.dir('out')
-		Path templateDir = pawFs.dir('templates')
-		Path contentDir = pawFs.dir('contentDir/data')
-		Path filesDir = pawFs.dir('contentDir/files')
-		and: 'pawgen config'
-		def configFile = pawFs.writeProperties('config.properties', [
-			contentDir      : contentDir.toUri() as String,
-			staticDirs      : filesDir.toUri() as String,
-			templatesDir    : templateDir.toUri() as String,
-			outputDir       : outputDir.toUri() as String,
-			hosts           : 'localhost',
-			'netlify.enable': false as String,
-		]).toUri() as String
-		and: 'site data'
-		writeString(templateDir.resolve('index.html.mustache'), '''
-Parent: {{parent.title}} "{{#func.relativize}}{{{parent.url}}}{{/func.relativize}}"
-{{#children}}Child: {{title}} "{{#../func.relativize}}{{{url}}}{{/../func.relativize}}"\n{{/children}}
-Content:
-{{{.}}}
-''')
-		and:
-		write(filesDir.resolve('staticFile.bin'), 'test'.bytes)
-		and:
-		pawFs.file("$contentDir/index.xml", '''\
-<?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl"><article en:title="root"></article></body>
-'''.bytes)
-		pawFs.file("$contentDir/category2/index.xml", '''\
-<?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl"><article en:title="category2"></article></body>
-'''.bytes)
-		var subcategory1 = pawFs.file("$contentDir/category2/subcategory1/index.xml", '''\
-<?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl"><article en:title="subcategory1"></article></body>
-'''.bytes)
-		pawFs.file("$contentDir/category2/subcategory1/article1/index.xml", '''\
-<?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl"><article en:title="article1"></article></body>
-'''.bytes)
-		and: 'run application'
-		Application.run([configFile])
-		and: 'change file and add new'
-		Thread.sleep(1000)
-		var changeAndAddTimestamp = Instant.now()
-		setLastModifiedTime(subcategory1, FileTime.from(changeAndAddTimestamp))
-		pawFs.file("$contentDir/category1/index.xml", '''\
-<?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl"><article en:title="category1"></article></body>
-'''.bytes)
-		when: 'run regeneration'
-		var result = Application.run([configFile])
-		then:
-		result == 0
-		and:
-		verifyAll(pawFs.listFiles(outputDir).collectEntries({ [it, getLastModifiedTime(it).toInstant()] })) {
-			it.findAll({ changeAndAddTimestamp.isAfter(it.value) }).keySet() == [
-				'/pawgen_root/out/category2/category2.html',
-				'/pawgen_root/out/category2/subcategory1/article1/article1.html',
-				'/pawgen_root/out/files/staticFile.bin',
-				'/pawgen_root/out/root.html',
-			].collect(outputDir.&resolve) as Set
-			it.findAll({ changeAndAddTimestamp.compareTo(it.value) < 1 }).keySet() == [
-				'/pawgen_root/out/category1/category1.html',
-				'/pawgen_root/out/category2/subcategory1/subcategory1.html',
-			].collect(outputDir.&resolve) as Set
-		}
-		cleanup:
-		pawFs.close()
-	}
 }

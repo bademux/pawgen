@@ -38,6 +38,7 @@ public final class ArticleResource implements Resource {
 		String url = createUrl(resource.getCategory(), title);
 		return new ArticleResource(new Resource() {
 			final SimpleResource res = resource.storage.resource(resource.srcPath, url);
+
 			@Override
 			public InputStream inputStream() {
 				return contentSupplier.apply(res.inputStream());
@@ -45,7 +46,7 @@ public final class ArticleResource implements Resource {
 
 			@Override
 			public OutputStream outputStream() {
-				return res.isNewOrChanged() ? res.outputStream() : OutputStream.nullOutputStream();
+				return res.outputStream();
 			}
 		}, resource.getModificationDate(), url);
 	}
