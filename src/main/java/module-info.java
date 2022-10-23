@@ -1,5 +1,7 @@
 module pawgen.main {
 	exports net.pawet.pawgen;
+    exports net.pawet.pawgen.component;
+	exports net.pawet.pawgen.utils;
 
 	requires static lombok;
 	requires java.xml;
@@ -9,6 +11,4 @@ module pawgen.main {
 	requires java.net.http;
 	requires jakarta.json;
 	requires org.slf4j;
-	requires org.slf4j.simple;
-	requires jul.to.slf4j;
 }

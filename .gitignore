@@ -17,3 +17,4 @@ pawet.net.zip
 *.lck
 /config.properties
 /simplelogger.properties
+/logging.properties

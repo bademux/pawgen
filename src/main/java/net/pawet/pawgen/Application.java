@@ -3,7 +3,6 @@ package net.pawet.pawgen;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Pawgen;
 import net.pawet.pawgen.component.system.CliOptions;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -46,12 +45,6 @@ public class Application {
 			return args.subList(pos + 1, args.size());
 		}
 		return args;
-	}
-
-	static {
-		System.setProperty("java.awt.headless", Boolean.TRUE.toString());
-		SLF4JBridgeHandler.removeHandlersForRootLogger();
-		SLF4JBridgeHandler.install();
 	}
 
 }

@@ -40,6 +40,12 @@ application {
 	applicationName 'pawgen'
 }
 
+run {
+	enableAssertions = true
+	jvmArgs = ['-Xmx2G']
+	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
+}
+
 jar {
 	manifest {
 		attributes = ['Main-Class': application.mainClass.get(), 'Version': project.version]
@@ -95,8 +101,8 @@ dependencies {
 	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-jpeg', version: twelvemonkeysVersion
 	implementation group: 'jakarta.json', name: 'jakarta.json-api', version: jakartajsonVersion
 	implementation group: 'org.glassfish', name: 'jakarta.json', version: jakartajsonVersion, classifier: 'module'
-	implementation group: 'org.slf4j', name: 'slf4j-simple', version: slf4jVersion
-	implementation group: 'org.slf4j', name: 'jul-to-slf4j', version: slf4jVersion
+	implementation group: 'org.slf4j', name: 'slf4j-jdk14', version: slf4jVersion
+
 
 	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
