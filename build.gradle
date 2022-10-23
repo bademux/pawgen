@@ -44,7 +44,7 @@ application {
 run {
 	enableAssertions = true
 	jvmArgs = ['-Xmx2G']
-	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
+	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding' : 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
 }
 
 jar {
