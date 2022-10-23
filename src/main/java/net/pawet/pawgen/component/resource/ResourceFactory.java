@@ -20,19 +20,19 @@ public record ResourceFactory(Storage storage,
 							  Set<String> hosts) {
 
 	@SneakyThrows
-	public Map<String, String> createResource(String name, Category category, Map<String, String> attributes) {
+	public Map<String, String> createResource(String tagName, Category category, Map<String, String> attributes) {
 		try {
-			return create(name, category, attributes)
+			return create(tagName, category, attributes)
 				.map(Supplier::get)
 				.orElse(attributes);
 		} catch (Exception e) {
-			log.warn("Error while processing file '{}' in '{}'", name, category);
+			log.warn("Error while processing tag '{}' in '{}'", tagName, category);
 		}
 		return attributes;
 	}
 
-	private Optional<Supplier<Map<String, String>>> create(String name, Category category, Map<String, String> attributes) {
-		return switch (name) {
+	private Optional<Supplier<Map<String, String>>> create(String tagName, Category category, Map<String, String> attributes) {
+		return switch (tagName) {
 			case "img" -> Optional.ofNullable(attributes.get("src"))
 				.map(this::handleLink)
 				.map(category::resolve)
