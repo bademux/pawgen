@@ -69,13 +69,12 @@ public class Storage {
 			.orElseThrow();
 	}
 
-	public SimpleResource resource(String rootRelativePath) {
+	public Optional<SimpleResource> resource(String rootRelativePath) {
 		return Optional.ofNullable(rootRelativePath)
 			.filter(not(String::isBlank))
 			.map(this::resolveReadDir)
 			.filter(Files::isRegularFile)
-			.map(path -> new SimpleResource(path, resolveOutputDir(rootRelativePath), this))
-			.orElseThrow();
+			.map(path -> new SimpleResource(path, resolveOutputDir(rootRelativePath), this));
 	}
 
 	public CategoryAwareResource resource(Category category) {

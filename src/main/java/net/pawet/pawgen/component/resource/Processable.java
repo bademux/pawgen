@@ -24,10 +24,6 @@ public class Processable implements Supplier<Map<String, String>> {
 	@ToString.Include
 	private final Map<String, String> attributes;
 
-	public static Processable noAttributes(Resource resource) {
-		return new Processable(resource, Map.of());
-	}
-
 	@Override
 	public Map<String, String> get() {
 		transferSilently(resource);

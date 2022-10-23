@@ -34,39 +34,35 @@ public record ResourceFactory(Storage storage,
 	private Optional<Supplier<Map<String, String>>> create(String tagName, Category category, Map<String, String> attributes) {
 		return switch (tagName) {
 			case "img" -> Optional.ofNullable(attributes.get("src"))
-				.map(this::handleLink)
+				.flatMap(this::handleLink)
 				.map(category::resolve)
-				.map(this::imageResource)
+				.flatMap(this::imageResource)
 				.map(res -> processableImageFactory.create(attributes, category, res));
 			case "a" -> Optional.ofNullable(attributes.get("href"))
-				.map(this::handleLink)
+				.flatMap(this::handleLink)
 				.map(category::resolve)
-				.map(storage::resource)
+				.flatMap(storage::resource)
 				.map(resource -> new Processable(resource, attributes));
 			default -> Optional.empty();
 		};
 	}
 
-	private ImageResource imageResource(String rootRelativePath) {
-		return ImageResource.of(storage.resource(rootRelativePath), rootRelativePath);
+	private Optional<ImageResource> imageResource(String rootRelativePath) {
+		return storage.resource(rootRelativePath).map(simpleResource -> ImageResource.of(simpleResource, rootRelativePath));
 	}
 
-	String handleLink(String urlStr) {
+	Optional<String> handleLink(String urlStr) {
 		try {
 			var uri = new URI(urlStr);
-			if (hosts.contains(uri.getHost()) || uri.getScheme() == null) { //is current host or  relative to host
+			if (hosts.contains(uri.getHost()) || uri.getScheme() == null) { //is current host or relative to host
 				String path = uri.getPath();
 				if (path != null && !path.isBlank()) {
-					return path;
+					return Optional.of(path);
 				}
 			}
 		} catch (URISyntaxException ignore) {
 		}
-		return null;
-	}
-
-	public void createAttachmentResource(String src) {
-		Processable.noAttributes(storage.resource(src));
+		return Optional.empty();
 	}
 
 }
