@@ -28,8 +28,8 @@ sourceSets.main.java.srcDir generatedDir
 compileJava.dependsOn generateJava
 
 compileJava {
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = jdkVersion
+	targetCompatibility = jdkVersion
 }
 
 java {
@@ -43,7 +43,7 @@ application {
 
 run {
 	enableAssertions = true
-	jvmArgs = ['-Xmx2G']
+	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC']
 	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
 }
 
@@ -58,17 +58,17 @@ jlink {
 	launcher {
 		name = 'emk'
 		noConsole = true
-		jvmArgs = ['-Xmx2G', '-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '-Djava.util.logging.config.class=net.pawet.pawgen.utils.LoggingConfig']
+		jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '-Djava.util.logging.config.class=net.pawet.pawgen.utils.LoggingConfig']
 	}
 
-	targetPlatform('17-linux-x64') {
+	targetPlatform("$jdkVersion-linux-x64") {
 		def (javaVersion, os, arch) = name.split('-')
 		jdkHome = jdkDownload("https://api.adoptium.net/v3/binary/latest/$javaVersion/ga/$os/$arch/jdk/hotspot/normal/eclipse") {
 			archiveExtension = 'tar.gz'
 			overwrite = true
 		}
 	}
-	targetPlatform('17-windows-x64') {
+	targetPlatform("$jdkVersion-windows-x64") {
 		def (javaVersion, os, arch) = name.split('-')
 		jdkHome = jdkDownload("https://api.adoptium.net/v3/binary/latest/$javaVersion/ga/$os/$arch/jdk/hotspot/normal/eclipse") {
 			archiveExtension = 'zip'
