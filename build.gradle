@@ -37,8 +37,9 @@ java {
 }
 
 application {
-	mainClass.set('net.pawet.pawgen.Application')
 	applicationName 'pawgen'
+	mainClass.set('net.pawet.pawgen.Application')
+	mainModule.set('pawgen.main')
 }
 
 run {
