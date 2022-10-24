@@ -58,7 +58,7 @@ jlink {
 	launcher {
 		name = 'emk'
 		noConsole = true
-		jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '-Djava.util.logging.config.class=net.pawet.pawgen.utils.LoggingConfig']
+		jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', 'Dsun.jnu.encoding=UTF-8', '-Djava.util.logging.config.class=net.pawet.pawgen.utils.LoggingConfig']
 	}
 
 	targetPlatform("$jdkVersion-linux-x64") {

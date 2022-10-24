@@ -24,6 +24,9 @@ public class Application {
 		log.info("Executed with config: {}", config);
 		try (var app = Pawgen.create(config)) {
 			Runtime.getRuntime().addShutdownHook(new Thread(app::close));
+			if(config.isCleanupOutputDir()){
+				app.cleanupOutputDir();
+			}
 			app.render();
 			app.copyStaticResources();
 			log.info("Built in {} min", Duration.ofMillis(CLOCK.millis() - start).toMinutes());

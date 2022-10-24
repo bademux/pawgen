@@ -51,6 +51,10 @@ public record Pawgen(ProcessingExecutorService processingExecutor,
 		}
 	}
 
+	public void cleanupOutputDir() {
+		storage.cleanupOutputDir();
+	}
+
 	private record DigestAwareResourceFile(@Delegate(types = FileDigestData.class) DigestAwareResource resource) implements FileDigestData {
 	}
 

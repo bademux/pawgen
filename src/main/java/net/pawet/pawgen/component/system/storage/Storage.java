@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -22,6 +24,7 @@ import static java.nio.file.Files.createDirectories;
 import static java.nio.file.Files.walk;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.Collections.reverseOrder;
+import static java.util.Comparator.reverseOrder;
 import static java.util.function.Predicate.not;
 import static lombok.AccessLevel.PACKAGE;
 import static net.pawet.pawgen.component.system.storage.Sha1DigestService.encode;
@@ -141,15 +144,17 @@ public class Storage {
 		return DigestAwareResource.of(digestService.load(path), path, outputDir.relativize(path), this);
 	}
 
-	@SneakyThrows
-	public boolean cleanupOutDirIfNeeded() {
-		if (Files.exists(outputDir)) {
-			try (var files = walk(outputDir).sorted(reverseOrder())) {
-				files.forEach(Storage::delete);
-			}
-			return true;
+	public boolean cleanupOutputDir() {
+		if (Files.notExists(outputDir)) {
+			return false;
 		}
-		return false;
+		try (var files = walk(outputDir).sorted(Collections.reverseOrder())) {
+			files.forEach(Storage::delete);
+		} catch (IOException e) {
+			log.error("can't cleanup operation for {}", outputDir, e);
+			return false;
+		}
+		return true;
 	}
 
 	@SneakyThrows

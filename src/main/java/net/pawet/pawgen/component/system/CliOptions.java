@@ -56,6 +56,8 @@ public final class CliOptions {
 	private final String accessToken;
 	@ToString.Include
 	private final String siteId;
+	@ToString.Include
+	private final boolean cleanupOutputDir;
 
 	public static final String USER_HOME = System.getProperty("user.home");
 
@@ -88,11 +90,11 @@ public final class CliOptions {
 		} catch (Throwable e) {
 			log.error("Error while setup config", e);
 		}
-		String help = format("""
-				Usage: pawgen contentDir [outputDir:%s] [templatesDir:%s] [staticDir:%s] [path_to/config.properties] [-h|--help] [-v|--version]
-				If path to config.properties is provided than config.properties in app dir is ignored
-				Config example:
-				%s""", OUTPUT_DIR, TEMPLATES_DIR, STATIC_DIR, serializeAsPropertyFile(getDefaultConfig()));
+		String help = """
+			Usage: pawgen contentDir [outputDir:%s] [templatesDir:%s] [staticDir:%s] [path_to/config.properties] [-h|--help] [-v|--version]
+			If path to config.properties is provided than config.properties in app dir is ignored
+			Config example:
+			%s""".formatted(OUTPUT_DIR, TEMPLATES_DIR, STATIC_DIR, serializeAsPropertyFile(getDefaultConfig()));
 		throw new Throwable(help);
 	}
 
@@ -144,6 +146,9 @@ public final class CliOptions {
 			.ifPresent(optionsBuilder::accessToken);
 		propertyProvider.apply("netlify.siteAppId")
 			.ifPresent(optionsBuilder::siteId);
+		propertyProvider.apply("cleanupOutputDir")
+			.map("true"::equalsIgnoreCase)
+			.ifPresent(optionsBuilder::cleanupOutputDir);
 
 	}
 
@@ -240,7 +245,7 @@ public final class CliOptions {
 	private static CliOptions create(String contentDir, String outputDir, String templatesDir,
 									 @Singular Set<String> staticDirs, String watermarkText, URI watermarkUri,
 									 Instant dateFrom, @Singular Set<String> hosts,
-									 boolean netlifyEnabled, URI netlifyUrl, String accessToken, String siteId) {
+									 boolean netlifyEnabled, URI netlifyUrl, String accessToken, String siteId, boolean cleanupOutputDir) {
 		var contentDirPath = ofNullable(contentDir)
 			.map(CliOptions::createUri)
 			.orElseThrow(() -> new IllegalArgumentException("Please provide contentDir"));
@@ -261,7 +266,8 @@ public final class CliOptions {
 			contentDirPath, outputDirPath, templatesDirPath, staticDirUris,
 			watermarkText, watermarkUri,
 			dateFrom,
-			hosts, netlifyEnabled, netlifyUrl, accessToken, siteId
+			hosts, netlifyEnabled, netlifyUrl, accessToken, siteId,
+			cleanupOutputDir
 		);
 	}
 
