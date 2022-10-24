@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 public class Application {
@@ -25,14 +26,16 @@ public class Application {
 		try (var app = Pawgen.create(config)) {
 			Runtime.getRuntime().addShutdownHook(new Thread(app::close));
 			if (config.isCleanupOutputDir()) {
+				log.info("Cleaning output dir");
 				app.cleanupOutputDir();
 			}
+			var copyStaticTask = CompletableFuture.supplyAsync(() -> measure(app::copyStaticResources));
 			var renderIn = measure(app::render);
-			var copyStaticResourcesIn = measure(app::copyStaticResources);
+			var copyStaticResourcesIn = copyStaticTask.join();
 			var deployIn = measure(app::deploy);
 			log.info("Built in {}min: render {}min, copyStaticResources {}min, deploy {}min",
 				Duration.ofMillis(CLOCK.millis() - start).toMinutes(),
-				renderIn, copyStaticResourcesIn, deployIn
+				renderIn.toMinutes(), copyStaticResourcesIn.toMinutes(), deployIn.toMinutes()
 			);
 		} catch (Throwable e) {
 			log.error("Unrecoverable error: {}", e.getMessage(), e);
