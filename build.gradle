@@ -61,8 +61,21 @@ jlink {
 		jvmArgs = ['-Xmx2G', '-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '-Djava.util.logging.config.class=net.pawet.pawgen.utils.LoggingConfig']
 	}
 
-	targetPlatform('17-linux-x64', "$buildDir/jdk/jdk17-linux-x64")
-	targetPlatform('17-windows-x64', "$buildDir/jdk/jdk17-windows-x64")
+	targetPlatform('17-linux-x64') {
+		def (javaVersion, os, arch) = name.split('-')
+		jdkHome = jdkDownload("https://api.adoptium.net/v3/binary/latest/$javaVersion/ga/$os/$arch/jdk/hotspot/normal/eclipse") {
+			archiveExtension = 'tar.gz'
+			overwrite = true
+		}
+	}
+	targetPlatform('17-windows-x64') {
+		def (javaVersion, os, arch) = name.split('-')
+		jdkHome = jdkDownload("https://api.adoptium.net/v3/binary/latest/$javaVersion/ga/$os/$arch/jdk/hotspot/normal/eclipse") {
+			archiveExtension = 'zip'
+			overwrite = true
+		}
+	}
+
 }
 
 graalvmNative {
@@ -127,29 +140,3 @@ dependencies {
 	testImplementation group: 'com.github.tomakehurst', name: 'wiremock-jre8', version: wiremockVersion
 }
 
-
-jlink.targetPlatforms.get().each { name, targetPlatform ->
-	def namePostfix = name.split('-').collect({ it.capitalize() }).join()
-	def downloadTask = tasks.create(name: "downloadJdk$namePostfix") {
-		def (javaVersion, os, arch) = name.split('-')
-		inputs.property('javaVersion', javaVersion)
-		inputs.property('os', os)
-		inputs.property('arch', arch)
-		outputs.file "$buildDir/${name}.${name.contains('windows') ? 'zip' : 'tgz'}"
-		outputs.upToDateWhen { true }
-		doLast {
-			ant.get(src: "https://api.adoptium.net/v3/binary/latest/$inputs.properties.javaVersion/ga/$inputs.properties.os/$inputs.properties.arch/jdk/hotspot/normal/eclipse", dest: outputs.files.singleFile)
-		}
-	}
-
-	tasks.jlink.dependsOn tasks.create(name: "unpackJdk$namePostfix", type: Copy, dependsOn: downloadTask) {
-		File file = downloadTask.outputs.files.singleFile
-		Closure<FileTree> archiveTree = file.name.endsWith('zip') ? project::zipTree : { tarTree(resources.gzip(it)) }
-		from(archiveTree.call(file)) {
-			eachFile { it.relativePath = new RelativePath(true, it.relativePath.segments.drop(1)) }
-			includeEmptyDirs = false
-		}
-		into targetPlatform.jdkHome
-		outputs.dir targetPlatform.jdkHome
-	}
-}
