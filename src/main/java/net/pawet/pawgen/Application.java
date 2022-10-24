@@ -24,13 +24,16 @@ public class Application {
 		log.info("Executed with config: {}", config);
 		try (var app = Pawgen.create(config)) {
 			Runtime.getRuntime().addShutdownHook(new Thread(app::close));
-			if(config.isCleanupOutputDir()){
+			if (config.isCleanupOutputDir()) {
 				app.cleanupOutputDir();
 			}
-			app.render();
-			app.copyStaticResources();
-			log.info("Built in {} min", Duration.ofMillis(CLOCK.millis() - start).toMinutes());
-			app.deploy();
+			var renderIn = measure(app::render);
+			var copyStaticResourcesIn = measure(app::copyStaticResources);
+			var deployIn = measure(app::deploy);
+			log.info("Built in {}min: render {}min, copyStaticResources {}min, deploy {}min",
+				Duration.ofMillis(CLOCK.millis() - start).toMinutes(),
+				renderIn, copyStaticResourcesIn, deployIn
+			);
 		} catch (Throwable e) {
 			log.error("Unrecoverable error: {}", e.getMessage(), e);
 			CliOptions.handleError(e).forEach(log::error);
@@ -41,6 +44,11 @@ public class Application {
 		return 0;
 	}
 
+	private static Duration measure(Runnable run) {
+		long start = CLOCK.millis();
+		run.run();
+		return Duration.ofMillis(CLOCK.millis() - start);
+	}
 
 	private static List<String> handleDirectClassRun(List<String> args) {
 		int pos = args.indexOf(Application.class.getName());
