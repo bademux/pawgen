@@ -1,5 +1,6 @@
 package net.pawet.pawgen.component;
 
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
@@ -17,48 +18,73 @@ import net.pawet.pawgen.component.system.storage.*;
 import net.pawet.pawgen.component.xml.ArticleParser;
 
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.function.Consumer;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 @Slf4j
-public record Pawgen(ProcessingExecutorService processingExecutor,
-					 ArticleHeaderQuery queryService,
-					 Renderer renderer,
-					 FileSystemRegistry fsRegistry,
-					 Storage storage,
-					 StaticFileService staticFileService,
-					 Consumer<Stream<FileDigestData>> deployer) implements AutoCloseable {
+@RequiredArgsConstructor
+public class Pawgen implements AutoCloseable {
 
-	public static Pawgen create(CliOptions opts) {
+	private final ProcessingExecutorService processingExecutor;
+	private final ArticleHeaderQuery queryService;
+	private final Renderer renderer;
+	private final FileSystemRegistry fsRegistry;
+	private final Storage storage;
+	private final StaticFileService staticFileService;
+	private final Consumer<Stream<FileDigestData>> deployer;
+	private final Supplier<Duration> imagesProcessingTime;
+	private final Clock clock;
+	private final boolean cleanupOutputDir;
+
+	public static Pawgen create(CliOptions opts, Clock clock, int processingThreads) {
 		var fsRegistry = new FileSystemRegistry();
 		Path outputDir = fsRegistry.getPathFsRegistration(opts.getOutputUri());
 		var staticFileService = new StaticFileService(opts.getStaticUris(), fsRegistry);
 		var storage = Storage.create(staticFileService::resolve, fsRegistry.getPathFsRegistration(opts.getContentUri()), outputDir);
 		var watermarkFilter = new WatermarkFilterFactory(fsRegistry).create(opts.getWatermarkText(), opts.getWatermarkUri());
-		var imageFactory = new ProcessableImageFactory(watermarkFilter);
-		var processingExecutor = new ProcessingExecutorService(Runtime.getRuntime().availableProcessors());
+		var imageFactory = ProcessableImageFactory.of(clock, watermarkFilter);
+		var processingExecutor = new ProcessingExecutorService(processingThreads);
 		var resourceFactory = new ResourceFactory(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()));
 		var queryService = new ArticleHeaderQuery(storage, new ArticleParser(resourceFactory));
 		var renderer = Renderer.of(templater, queryService, processingExecutor);
 		var deployerFactory = new DeployerFactory(opts.getNetlifyUrl(), opts.getAccessToken(), opts.getSiteId());
-		return new Pawgen(processingExecutor, queryService, renderer, fsRegistry, storage, staticFileService, deployerFactory.create(opts.isNetlifyEnabled()));
+		return new Pawgen(processingExecutor, queryService, renderer, fsRegistry, storage, staticFileService, deployerFactory.create(opts.isNetlifyEnabled()), imageFactory::getProcessingTime, clock, opts.isCleanupOutputDir());
 	}
 
-	public void deploy() {
+	public Duration deploy() {
+		return measure(this::deployInternal);
+	}
+
+	public void deployInternal() {
 		try (var items = storage.readOutputDir()) {
 			deployer.accept(items.map(DigestAwareResourceFile::new));
 		}
 	}
 
-	public void cleanupOutputDir() {
-		storage.cleanupOutputDir();
+	public Duration cleanupOutputDir() {
+		return measure(this::cleanupOutputDirInternal);
+	}
+
+	public void cleanupOutputDirInternal() {
+		if (cleanupOutputDir) {
+			log.debug("Cleaning output dir");
+			storage.cleanupOutputDir();
+		}
 	}
 
 	private record DigestAwareResourceFile(@Delegate(types = FileDigestData.class) DigestAwareResource resource) implements FileDigestData {
 	}
 
-	public void render() {
+	public Duration render() {
+		return measure(this::renderInternal);
+	}
+
+	public void renderInternal() {
 		log.info("Finding articles to be processed.");
 		try (var headers = queryService.get(Category.ROOT)) {
 			headers.map(renderer::create).forEach(Renderer.ArticleContext::render);
@@ -67,7 +93,15 @@ public record Pawgen(ProcessingExecutorService processingExecutor,
 		assert storage.assertChecksums() : "Some checksum are inconsistent";
 	}
 
-	public void copyStaticResources() {
+	public Duration copyStaticResources() {
+		return measure(this::copyStaticResourcesInternal);
+	}
+
+	public Duration getImageProcessingTime() {
+		return imagesProcessingTime.get();
+	}
+
+	public void copyStaticResourcesInternal() {
 		log.info("Copying static resources");
 		staticFileService.copyStaticResources(storage::resource)
 			.filter(SimpleResource::isNewOrChanged)
@@ -85,6 +119,12 @@ public record Pawgen(ProcessingExecutorService processingExecutor,
 	public void close() {
 		processingExecutor.close();
 		fsRegistry.close();
+	}
+
+	private Duration measure(Runnable run) {
+		long start = clock.millis();
+		run.run();
+		return Duration.ofMillis(clock.millis() - start);
 	}
 
 }

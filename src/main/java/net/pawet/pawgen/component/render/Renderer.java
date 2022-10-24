@@ -20,17 +20,13 @@ import static lombok.AccessLevel.PACKAGE;
 import static lombok.AccessLevel.PRIVATE;
 
 @Slf4j
-@RequiredArgsConstructor(access = PACKAGE)
+@RequiredArgsConstructor(staticName = "of")
 public class Renderer {
 
 	private final Set<Article> processedFiles = ConcurrentHashMap.newKeySet();
 	private final Templater templater;
 	private final ArticleHeaderQuery queryService;
 	private final Executor executor;
-
-	public static Renderer of(Templater templater, ArticleHeaderQuery queryService, Executor executor) {
-		return new Renderer(templater, queryService, executor);
-	}
 
 	public ArticleContext create(Article header) {
 		return new ArticleContext(header);
