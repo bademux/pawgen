@@ -44,7 +44,7 @@ application {
 run {
 	enableAssertions = true
 	jvmArgs = ['-Xmx2G']
-	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding' : 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
+	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
 }
 
 jar {
@@ -60,6 +60,9 @@ jlink {
 		noConsole = true
 		jvmArgs = ['-Xmx2G', '-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '-Djava.util.logging.config.class=net.pawet.pawgen.utils.LoggingConfig']
 	}
+
+	targetPlatform('17-linux-x64', "$buildDir/jdk/jdk17-linux-x64")
+	targetPlatform('17-windows-x64', "$buildDir/jdk/jdk17-windows-x64")
 }
 
 graalvmNative {
@@ -103,7 +106,6 @@ test {
 	useJUnitPlatform()
 }
 
-
 dependencies {
 	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
@@ -125,3 +127,29 @@ dependencies {
 	testImplementation group: 'com.github.tomakehurst', name: 'wiremock-jre8', version: wiremockVersion
 }
 
+
+jlink.targetPlatforms.get().each { name, targetPlatform ->
+	def namePostfix = name.split('-').collect({ it.capitalize() }).join()
+	def downloadTask = tasks.create(name: "downloadJdk$namePostfix") {
+		def (javaVersion, os, arch) = name.split('-')
+		inputs.property('javaVersion', javaVersion)
+		inputs.property('os', os)
+		inputs.property('arch', arch)
+		outputs.file "$buildDir/${name}.${name.contains('windows') ? 'zip' : 'tgz'}"
+		outputs.upToDateWhen { true }
+		doLast {
+			ant.get(src: "https://api.adoptium.net/v3/binary/latest/$inputs.properties.javaVersion/ga/$inputs.properties.os/$inputs.properties.arch/jdk/hotspot/normal/eclipse", dest: outputs.files.singleFile)
+		}
+	}
+
+	tasks.jlink.dependsOn tasks.create(name: "unpackJdk$namePostfix", type: Copy, dependsOn: downloadTask) {
+		File file = downloadTask.outputs.files.singleFile
+		Closure<FileTree> archiveTree = file.name.endsWith('zip') ? project::zipTree : { tarTree(resources.gzip(it)) }
+		from(archiveTree.call(file)) {
+			eachFile { it.relativePath = new RelativePath(true, it.relativePath.segments.drop(1)) }
+			includeEmptyDirs = false
+		}
+		into targetPlatform.jdkHome
+		outputs.dir targetPlatform.jdkHome
+	}
+}
