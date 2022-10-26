@@ -25,9 +25,7 @@ final class Sha1DigestService {
 
 	public OutputStream write(Path path, Function<Path, OutputStream> osProvider) throws Exception {
 		var os = new DigestOutputStream(osProvider.apply(path), MessageDigest.getInstance(ALGORITHM));
-		return new ObservableCloseOutputStream(os, () -> {
-			storeDigest(path, os.getMessageDigest().digest());
-		});
+		return new ObservableCloseOutputStream(os, () -> storeDigest(path, os.getMessageDigest().digest()));
 	}
 
 	@SneakyThrows
@@ -84,9 +82,9 @@ final class ObservableCloseOutputStream extends FilterOutputStream {
 	private final Object closeLock = new Object();
 	private final Runnable observer;
 
-	public ObservableCloseOutputStream(DigestOutputStream os, Runnable closeOnserver) {
+	public ObservableCloseOutputStream(DigestOutputStream os, Runnable closeObserver) {
 		super(os);
-		this.observer = closeOnserver;
+		this.observer = closeObserver;
 	}
 
 	@Override

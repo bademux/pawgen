@@ -12,9 +12,11 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -23,8 +25,6 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.nio.file.Files.createDirectories;
 import static java.nio.file.Files.walk;
 import static java.nio.file.StandardOpenOption.*;
-import static java.util.Collections.reverseOrder;
-import static java.util.Comparator.reverseOrder;
 import static java.util.function.Predicate.not;
 import static lombok.AccessLevel.PACKAGE;
 import static net.pawet.pawgen.component.system.storage.Sha1DigestService.encode;
@@ -35,16 +35,17 @@ public class Storage {
 
 	public static final String ARTICLE_FILENAME = "index.xml";
 
+	private final Map<Entry<Path, String>, Resource> resourceCache = new ConcurrentHashMap<>();
 	private final Predicate<Path> isAttributeFile;
 	private final Sha1DigestService digestService;
-	private final Function<String, Optional<Path>> staticFileResolver;
+	private final Set<Path> staticDirs;
 	private final Path contentDir;
 	private final Path outputDir;
 
-	public static Storage create(@NonNull Function<String, Optional<Path>> staticFileResolver, @NonNull Path contentDir, @NonNull Path outputDir) {
+	public static Storage create(@NonNull Set<Path> staticDirs, @NonNull Path contentDir, @NonNull Path outputDir) {
 		var metaService = new MetaService();
 		var digestService = new Sha1DigestService(metaService);
-		return new Storage(metaService::isAttributeFile, digestService, staticFileResolver, contentDir, outputDir);
+		return new Storage(metaService::isAttributeFile, digestService, staticDirs, contentDir, outputDir);
 	}
 
 	@SneakyThrows
@@ -64,23 +65,24 @@ public class Storage {
 			});
 	}
 
-	public SimpleResource resource(Path src, String dest) {
-		return Optional.ofNullable(src)
-			.filter(Files::exists)
-			.filter(Files::isRegularFile)
-			.map(path -> new SimpleResource(path, resolveOutputDir(dest), this))
-			.orElseThrow();
-	}
-
-	public Optional<SimpleResource> resource(String rootRelativePath) {
+	public Optional<Resource> resource(String rootRelativePath) {
 		return Optional.ofNullable(rootRelativePath)
 			.filter(not(String::isBlank))
-			.map(this::resolveReadDir)
-			.filter(Files::isRegularFile)
-			.map(path -> new SimpleResource(path, resolveOutputDir(rootRelativePath), this));
+			.map(this::resolveInputDir)
+			.flatMap(src -> resource(src, rootRelativePath));
 	}
 
-	public CategoryAwareResource resource(Category category) {
+	public Optional<Resource> resource(Path src, String dest) {
+		return Optional.ofNullable(src)
+			.filter(Files::isRegularFile)
+			.map(path -> createResource(path, dest));
+	}
+
+	private Resource createResource(Path src, String dest) {
+		return resourceCache.computeIfAbsent(Map.entry(src, dest), path -> new SimpleResource(path.getKey(), resolveOutputDir(dest), this));
+	}
+
+	public CategoryAwareResource categoryAwareResource(Category category) {
 		return Optional.ofNullable(category)
 			.map(Category::toString)
 			.map(contentDir::resolve)
@@ -91,13 +93,37 @@ public class Storage {
 			.orElseThrow();
 	}
 
-	Path resolveReadDir(String pathStr) {
-		if (pathStr.startsWith("/")) {
-			String relPathStr = pathStr.substring(1);
-			return staticFileResolver.apply(relPathStr)
-				.orElseGet(() -> contentDir.resolve(relPathStr))
-				.normalize();
+	public Stream<Resource> copyFiles() {
+		return staticDirs.stream().flatMap(this::getPathStream);
+	}
+
+	private Stream<Resource> getPathStream(Path copyPath) {
+		Path parent = copyPath.getParent();
+		Path basePath = parent == null ? copyPath : parent;
+		try {
+			return Files.walk(copyPath, MAX_VALUE)
+				.filter(Files::isRegularFile)
+				.map(p -> resource(p, basePath.relativize(p).toString()))
+				.filter(Optional::isPresent)
+				.map(Optional::get);
+		} catch (IOException e) {
+			log.error("Can't find in basePath {}", copyPath, e);
 		}
+		return Stream.empty();
+	}
+
+	Path resolveInputDir(String pathStr) {
+		if (!pathStr.startsWith("/")) {
+			return contentDir.resolve(pathStr).normalize();
+		}
+		pathStr = pathStr.substring(1);
+		for (Path staticDir : staticDirs) {
+			Path targetPath = staticDir.getFileSystem().getPath(pathStr);
+			if (staticDir.startsWith(targetPath)) {
+				return targetPath.normalize();
+			}
+		}
+		log.debug("looks like url {} is invalid, try to fix", pathStr);
 		return contentDir.resolve(pathStr).normalize();
 	}
 
@@ -108,7 +134,7 @@ public class Storage {
 	}
 
 	public InputStream readFromInput(String relativeToRoot) {
-		return read(resolveReadDir(relativeToRoot));
+		return read(resolveInputDir(relativeToRoot));
 	}
 
 	Path resolveOutputDir(String pathStr) {

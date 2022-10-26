@@ -7,9 +7,9 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 @Slf4j
-public record DeployerFactory(URI url, String accessToken, String siteId) {
+public record DeployerFactory(URI url, String accessToken, String siteId, boolean isEnabled) {
 
-	public Consumer<Stream<FileDigestData>> create(boolean isEnabled) {
+	public Consumer<Stream<FileDigestData>> create() {
 		if (isEnabled) {
 			return new NetlifyDeployer(url, accessToken, siteId)::deploy;
 		}

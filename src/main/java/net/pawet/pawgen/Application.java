@@ -2,6 +2,7 @@ package net.pawet.pawgen;
 
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Pawgen;
+import net.pawet.pawgen.component.netlify.DeployerFactory;
 import net.pawet.pawgen.component.system.CliOptions;
 
 import java.time.Clock;
@@ -23,15 +24,21 @@ public class Application {
 		long start = CLOCK.millis();
 		var config = CliOptions.parse(args);
 		log.info("Executed with config: {}", config);
-		try (var app = setupShutdownHook(Pawgen.create(config, CLOCK, Runtime.getRuntime().availableProcessors()))) {
+		try (var app = setupShutdownHook(Pawgen.create(config, Runtime.getRuntime().availableProcessors() * 2))) {
 			var cleanupIn = app.cleanupOutputDir();
-			var copyStaticTask = CompletableFuture.supplyAsync(app::copyStaticResources);
+			var copyTask = CompletableFuture.supplyAsync(app::copyFiles);
 			var renderIn = app.render();
-			var copyStaticResourcesIn = copyStaticTask.join();
-			var deployIn = app.deploy();
-			log.info("Cleanup {}min, render {}min, img processing {}min, copyStaticResources {}min, deploy {}min",
-				cleanupIn.toMinutes(), renderIn.toMinutes(), app.getImageProcessingTime().toMinutes(), copyStaticResourcesIn.toMinutes(), deployIn.toMinutes()
+			var copyIn = copyTask.join();
+			long startDeploy = CLOCK.millis();
+			try (var files = app.readOutputDir()) {
+				new DeployerFactory(config.getNetlifyUrl(), config.getAccessToken(), config.getSiteId(), config.isNetlifyEnabled())
+					.create()
+					.accept(files);
+			}
+			log.info("Cleanup {}min, render {}min, img processing {}min, copy resources {}min, deploy {}min",
+				cleanupIn.toMinutes(), renderIn.toMinutes(), app.getImageProcessingTime().toMinutes(), app.getCopyResourcesTime().plus(copyIn).toMinutes(), Duration.ofMillis(CLOCK.millis() - startDeploy).toMinutes()
 			);
+
 		} catch (Throwable e) {
 			log.error("Unrecoverable error: {}", e.getMessage(), e);
 			CliOptions.handleError(e).forEach(log::error);

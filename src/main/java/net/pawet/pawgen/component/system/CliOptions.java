@@ -17,11 +17,9 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
 import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.*;
 import static lombok.AccessLevel.PRIVATE;
 
 @Slf4j
@@ -169,22 +167,23 @@ public final class CliOptions {
 	}
 
 	private static Map<String, String> getDefaultConfig() {
-		return Map.of(
-			"watermark.file", "zip:///site.zip!/path_inside_zip/watermark.png",
-			"watermark.text", "pawgen",
-			//#commaseparated list of files dirs or globed patterns https://docs.oracle.com/javase/tutorial/essential/io/find.html
-			"staticDirs", "./sitedir/**,../somedir",
-			"contentDir", "/content",
-			"outputDir", "zip:/%USER_HOME%/Desktop/pawgen/site.zip?create,true&useTempFile,true&noCompression,false",
-			"templatesDir", "./templates",
-			//#dateFrom,2007-12-03T10:15:30.00Z
-			"hosts", "pawgen.mydomain,test.pawgen.mydomain",
-			//#https://app.netlify.com/user/applications#personal-access-tokens
-			"netlify.enable", Boolean.TRUE.toString(),
-			"netlify.accessToken", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-			//#https://app.netlify.com/sites/pawet/settings/general#site-details
-			"netlify.siteAppId", "11111111-1111-1111-1111-111111111111"
-		);
+		var config = new LinkedHashMap<String, String>();
+		config.put("watermark.file", "zip:///site.zip!/path_inside_zip/watermark.png");
+		config.put("watermark.text", "pawgen");
+		config.put("staticDirs", "./sitedir/**,../somedir");
+		//#commaseparated list of files dirs or globed patterns https://docs.oracle.com/javase/tutorial/essential/io/find.html
+		config.put("copyDirs", "./sitedir/**,../somedir");
+		config.put("contentDir", "/content");
+		config.put("outputDir", "zip:/%USER_HOME%/Desktop/pawgen/site.zip?create,true&useTempFile,true&noCompression,false");
+		config.put("templatesDir", "./templates");
+		config.put("cleanupOutputDir", Boolean.FALSE.toString());
+		config.put("hosts", "pawgen.mydomain,test.pawgen.mydomain");
+		config.put("netlify.enable", Boolean.TRUE.toString());
+//#https://app.netlify.com/user/applications#personal-access-tokens
+		config.put("netlify.accessToken", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+//#https://app.netlify.com/sites/pawet/settings/general#site-details
+		config.put("netlify.siteAppId", "11111111-1111-1111-1111-111111111111");
+		return config;
 	}
 
 	@SneakyThrows
@@ -258,7 +257,7 @@ public final class CliOptions {
 		var staticDirUris = staticDirs.stream()
 			.filter(Objects::nonNull)
 			.map(CliOptions::createUri)
-			.toList();
+			.collect(toUnmodifiableSet());
 		if (netlifyEnabled && (accessToken == null || accessToken.isBlank()) && (siteId == null || siteId.isBlank())) {
 			throw new IllegalArgumentException("Please provide 'netlify.accessToken' and 'netlify.siteId' or disable Netlify by 'netlify.enabled=false'");
 		}

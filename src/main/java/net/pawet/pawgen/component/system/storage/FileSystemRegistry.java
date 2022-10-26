@@ -6,10 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -23,6 +21,7 @@ import static java.util.stream.Collectors.toMap;
 public class FileSystemRegistry implements AutoCloseable {
 
 
+	public static final String DIR_CONTENT_POSTFIX = "**";
 	private final Set<FileSystem> fileSystems = ConcurrentHashMap.newKeySet();
 
 	@SneakyThrows
@@ -63,6 +62,28 @@ public class FileSystemRegistry implements AutoCloseable {
 			.map(Pattern.compile("=")::split)
 			.filter(arr -> arr.length == 2)
 			.map(strings -> entry(strings[0], strings[1]));
+	}
+
+	public Stream<Path> parseCopyDir(URI path) {
+		return Optional.of(path)
+			.filter(uri -> uri.getSchemeSpecificPart().endsWith(DIR_CONTENT_POSTFIX))
+			.map(FileSystemRegistry::stripDirContentPostfix)//new URI
+			.map(this::readDir)
+			.map(Collection::stream)
+			.orElseGet(() -> Stream.of(Path.of(path)));
+	}
+
+	@SneakyThrows
+	private static URI stripDirContentPostfix(URI uri) {
+		String ssp = uri.getSchemeSpecificPart();
+		return new URI(uri.getScheme(), ssp.substring(0, ssp.length() - DIR_CONTENT_POSTFIX.length()), uri.getFragment());
+	}
+
+	@SneakyThrows
+	private Collection<Path> readDir(URI uri) {
+		try (var dirs = Files.list(getPathFsRegistration(uri))) {
+			return dirs.toList();
+		}
 	}
 
 	@Override

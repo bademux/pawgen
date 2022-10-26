@@ -47,7 +47,7 @@ public class PawgenFs implements AutoCloseable {
 
 	@SneakyThrows
 	public static PawgenFs tmpFs() {
-		Path tmp = createTempDirectory("pawgen");
+		Path tmp = createTempDirectory(Path.of("./build").toAbsolutePath().normalize(), "pawgen");
 		return new PawgenFs(tmp.getFileSystem(), tmp);
 	}
 
@@ -100,8 +100,9 @@ public class PawgenFs implements AutoCloseable {
 		Files.delete(path);
 	}
 
+	@SneakyThrows
 	public Map<Path, String> readAttributes(Path outputDir, String attrName) {
-		return listDir(outputDir).map(path -> new SimpleImmutableEntry<>(path, readAttribute(path, attrName)))
+		return walk(outputDir).map(path -> new SimpleImmutableEntry<>(path, readAttribute(path, attrName)))
 			.filter(entry -> entry.getValue() != null)
 			.collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}

@@ -2,8 +2,6 @@ package net.pawet.pawgen.component.resource.img;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.Category;
-import net.pawet.pawgen.component.resource.Processable;
 import net.pawet.pawgen.component.system.storage.ImageResource;
 
 import javax.imageio.*;
@@ -15,7 +13,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -29,36 +26,39 @@ import static javax.imageio.metadata.IIOMetadataFormatImpl.standardMetadataForma
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class ImageWithThumbnailProcessable implements Supplier<Map<String, String>> {
 
-	private final int thumbnailWidth = 250;
 
 	@EqualsAndHashCode.Include
 	private final ImageResource resource;
 	@ToString.Include
 	private final Map<String, String> attributes;
 	private final Consumer<BufferedImage> watermarkFilter;
-	private final Category category;
+	@ToString.Include
+	private final int thumbnailWidth;
 
 	@SneakyThrows
 	@Override
 	public Map<String, String> get() {
 		try {
-			AdvBufferedImage img = readImage();
-			var dimension = new Dimension(img.image.getWidth(), img.image.getHeight());
-			if (dimension.width > thumbnailWidth && hasThumbnailAttrs(attributes)) {
-				return processImageWithThumbnail(img, dimension);
+			var img = readImage();
+			BufferedImage image = img.getValue();
+			String formatName = img.getKey();
+			if (isGreaterThanThumbnail(image.getWidth()) && hasThumbnailAttrs()) {
+				var attrs = processThumbnail(image);
+				writeWatermarkedImage(image, formatName);
+				return attrs;
 			}
-			return processImage(dimension);
+			return processImage(image, formatName);
 		} catch (Exception e) {
 			log.warn("Can't process image, just coping", e);
 		}
-		Processable.transferSilently(resource);
+		resource.transfer();
 		return attributes;
 	}
 
-	private Map<String, String> processImage(Dimension dimension) {
-		Processable.transferSilently(resource);
-		var calcDimensions = parseDimensions(dimension, getDimensionAttr("width", attributes), getDimensionAttr("height", attributes));
-		return imageAttributes(calcDimensions, category.relativize(resource.getSrc()));
+	private Map<String, String> processImage(BufferedImage image, String formatName) {
+		var calcDimensions = parseDimensions(image.getWidth(), image.getHeight(), getDimensionAttr("width", attributes), getDimensionAttr("height", attributes));
+		String srcBase64 = getAsBase64(image, formatName);
+		return imageAttributes(calcDimensions, srcBase64);
 	}
 
 	private static Integer getDimensionAttr(String name, Map<String, String> attrs) {
@@ -70,17 +70,17 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 		return s.endsWith("px") ? s.substring(0, s.length() - 2) : s;
 	}
 
-	private static Dimension parseDimensions(Dimension dimension, Integer widthAttr, Integer heightAttr) {
+	private static Dimension parseDimensions(int width, int height, Integer widthAttr, Integer heightAttr) {
 		if (widthAttr != null && heightAttr != null) {
 			return new Dimension(widthAttr, heightAttr);
 		}
 		if (widthAttr == null && heightAttr == null) {
-			return dimension;
+			return new Dimension(width,height);
 		}
 		if (widthAttr != null) {
-			return new Dimension(widthAttr, calcDimension(dimension, widthAttr));
+			return new Dimension(widthAttr, calcDimension(width, height, widthAttr));
 		}
-		return new Dimension(calcDimension(dimension, heightAttr), heightAttr);
+		return new Dimension(calcDimension(width, height, heightAttr), heightAttr);
 	}
 
 	private Map<String, String> imageAttributes(Dimension dimension, String src) {
@@ -93,66 +93,62 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 		return attr;
 	}
 
-	private Map<String, String> processImageWithThumbnail(AdvBufferedImage img, Dimension dimension) {
-		var thumbnailDimension = getThumbnailDimension(dimension);
-		String srcBase64 = "data:image/" + img.formatName + ";base64," + processThumbnail(img, thumbnailDimension);
-		processWatermark(img);
-		return thumbnailAttributes(thumbnailDimension, srcBase64);
+	private Map<String, String> processThumbnail(BufferedImage image) {
+		var thumbnailHeight = getThumbnailHeight(image.getWidth(), image.getHeight());
+		String srcBase64 = getAsBase64(resize(image, thumbnailWidth, thumbnailHeight), "jpg");
+		return thumbnailAttributes(srcBase64, thumbnailWidth, thumbnailHeight);
 	}
 
-	private static boolean hasThumbnailAttrs(Map<String, String> attrs) {
-		String classAttr = attrs.get("class");
+	private boolean hasThumbnailAttrs() {
+		String classAttr = attributes.get("class");
 		return classAttr == null || classAttr.startsWith("g_img_");
 	}
 
-	private Map<String, String> thumbnailAttributes(Dimension dimension, String src) {
+	private boolean isGreaterThanThumbnail(int width) {
+		return width > thumbnailWidth;
+	}
+
+	private Map<String, String> thumbnailAttributes(String src, int width, int height) {
 		String alt = attributes.get("alt");
 		String title = alt == null ? attributes.get("src") : alt + '.';
 		var attr = new HashMap<String, String>();
 		attr.put("src", src);
 		attr.put("title", title);
 		attr.put("alt", title);
-		attr.put("width", String.valueOf(dimension.width));
-		attr.put("height", String.valueOf(dimension.height));
+		attr.put("width", String.valueOf(width));
+		attr.put("height", String.valueOf(height));
 		attr.put("class", attributes.getOrDefault("class", "g_img"));
 		attr.put("onClick", "showLightbox(this, '" + attributes.get("src") + "')");
 		attributes.forEach(attr::putIfAbsent);
 		return attr;
 	}
 
-	private void processWatermark(AdvBufferedImage img) {
+	private void writeWatermarkedImage(BufferedImage image, String formatName) {
 		try (var os = resource.outputStream()) {
-			watermarkFilter.accept(img.image);
-			writeImage(img.image, img.formatName, os);
-		} catch (FileAlreadyExistsException e) {
-			log.debug("File '{}' already exists", e.getFile());
+			watermarkFilter.accept(image);
+			writeImage(image, formatName, os);
 		} catch (IOException e) {
-			log.error("exception while processing image '{}'", this, e);
+			log.error("exception while watermarking image '{}'", this, e);
 		}
 	}
 
 	private final static Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
 
-	private String processThumbnail(AdvBufferedImage img, Dimension thumbnailDimension) {
-		var byteOs = new ByteArrayOutputStream(thumbnailWidth * thumbnailWidth * 3);
-		try (var os = BASE64_ENCODER.wrap(byteOs)) {
-			BufferedImage thumbnailImage = resize(img.image, thumbnailDimension);
-			writeImage(thumbnailImage, img.formatName, os);
-		} catch (FileAlreadyExistsException e) {
-			log.debug("File '{}' already exists", e.getFile());
-		} catch (IOException e) {
-			log.error("exception while processing image '{}'", resource.getThumbnailSrc(), e);
+	@SneakyThrows
+	private String getAsBase64(BufferedImage thumbnailImage, String formatName) {
+		var bos = new ByteArrayOutputStream(thumbnailImage.getWidth() * thumbnailImage.getHeight() * 3);
+		try (var os = BASE64_ENCODER.wrap(bos)) {
+			writeImage(thumbnailImage, formatName, os);
+			return "data:image/%s;base64,%s".formatted(formatName, bos.toString());
 		}
-		return byteOs.toString();
 	}
 
-	private Dimension getThumbnailDimension(Dimension dimension) {
-		int height = calcDimension(dimension, thumbnailWidth);
-		return new Dimension(thumbnailWidth, height);
+	private int getThumbnailHeight(int width, int height) {
+		return calcDimension(width, height, thumbnailWidth);
 	}
 
-	static int calcDimension(Dimension dimension, int destDimension) {
-		return (int) round(dimension.getHeight() / dimension.getWidth() * destDimension);
+	static int calcDimension(int width, int height, int destDimension) {
+		return (int) round(((double) height / width) * destDimension);
 	}
 
 	private static void writeImage(BufferedImage image, String formatName, OutputStream os) throws IOException {
@@ -219,19 +215,19 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 		return "png".equals(formatName) || "gif".equals(formatName) ? 0f : 0.7f;
 	}
 
-	private AdvBufferedImage readImage() throws IOException {
+	private Entry<String, BufferedImage> readImage() throws IOException {
 		try (var is = resource.inputStream()) {
 			return read(is);
 		}
 	}
 
-	private AdvBufferedImage read(InputStream is) throws IOException {
+	private Entry<String, BufferedImage> read(InputStream is) throws IOException {
 		try (var iis = ImageIO.createImageInputStream(is)) {
 			@Cleanup("dispose") var reader = getImageReaderBy(iis);
 			reader.setInput(iis, true, true);
 			log.debug("Reading image {} with format {}", resource.getSrc(), reader.getFormatName());
 			BufferedImage image = reader.read(0, reader.getDefaultReadParam());
-			return new AdvBufferedImage(image, reader.getFormatName());
+			return Map.entry(reader.getFormatName(), image);
 		}
 	}
 
@@ -242,19 +238,14 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 			.orElseThrow(() -> new IllegalArgumentException("No reader for image"));
 	}
 
-	static BufferedImage resize(BufferedImage img, Dimension dimension) {
-		var thumbnailImage = new BufferedImage(dimension.width, dimension.height, img.getType());
-		var graphics = thumbnailImage.createGraphics();
-		try {
-			graphics.setRenderingHint(KEY_INTERPOLATION, VALUE_INTERPOLATION_BILINEAR);
-			graphics.setRenderingHint(KEY_ANTIALIASING, VALUE_ANTIALIAS_ON);
-			graphics.drawImage(img, 0, 0, dimension.width, dimension.height, null);
-			return thumbnailImage;
-		} finally {
-			graphics.dispose();
-		}
+	static BufferedImage resize(BufferedImage img, int width, int height) {
+		var thumbnailImage = new BufferedImage(width, height, img.getType());
+		@Cleanup("dispose") var graphics = thumbnailImage.createGraphics();
+		graphics.setRenderingHint(KEY_INTERPOLATION, VALUE_INTERPOLATION_BICUBIC);
+		graphics.setRenderingHint(KEY_ANTIALIASING, VALUE_ANTIALIAS_ON);
+		graphics.setRenderingHint(KEY_RENDERING, VALUE_RENDER_SPEED);
+		graphics.drawImage(img, 0, 0, width, height, null);
+		return thumbnailImage;
 	}
 
-		private record AdvBufferedImage(BufferedImage image, String formatName) {
-	}
 }

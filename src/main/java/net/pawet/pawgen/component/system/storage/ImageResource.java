@@ -18,9 +18,10 @@ public final class ImageResource implements Resource {
 	@Getter
 	private final String src;
 
-	public static ImageResource of(SimpleResource resource, String src) {
+	public static ImageResource of(Resource resource, String src) {
 		String thumbnailSrc = "/thumbnails/" + src;
-		var thumbnail = resource.storage.resource(resource.srcPath, thumbnailSrc);
+		var res = (SimpleResource) resource;
+		var thumbnail = res.storage.resource(res.srcPath, thumbnailSrc).orElseThrow();;
 		return new ImageResource(resource, thumbnail, thumbnailSrc, src);
 	}
 

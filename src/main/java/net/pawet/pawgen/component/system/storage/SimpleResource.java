@@ -8,9 +8,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 
+import static lombok.AccessLevel.PACKAGE;
+
 @ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@RequiredArgsConstructor
+@RequiredArgsConstructor(access = PACKAGE)
 public final class SimpleResource implements Resource {
 
 	@ToString.Include
@@ -29,10 +31,6 @@ public final class SimpleResource implements Resource {
 	@Override
 	public OutputStream outputStream() {
 		return storage.write(destPath);
-	}
-
-	public boolean isNewOrChanged() {
-		return storage.getModificationDate(srcPath).isAfter(storage.getModificationDate(destPath));
 	}
 
 }

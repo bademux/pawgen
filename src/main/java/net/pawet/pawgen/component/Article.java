@@ -3,7 +3,6 @@ package net.pawet.pawgen.component;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
-import net.pawet.pawgen.component.system.storage.Resource;
 
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -21,7 +20,7 @@ import static lombok.AccessLevel.PRIVATE;
 @Slf4j
 public final class Article implements Comparable<Article> {
 
-	private final Resource resource;
+	private final ArticleResource resource;
 	@Getter
 	@ToString.Include
 	@EqualsAndHashCode.Include
@@ -48,18 +47,14 @@ public final class Article implements Comparable<Article> {
 	@Getter
 	private final String source;
 	@Getter
-	private final String file;
-	@Getter
-	private final String fileExt;
-	@Getter
 	@NonNull
 	private final String url;
 
-	public static Article of(ArticleResource resource, Category category, String type, String lang, String title, String author, ZonedDateTime date, String source, String file) {
+	public static Article of(ArticleResource resource, Category category, String type, String lang, String title, String author, ZonedDateTime date, String source) {
 		if (date == null) {
 			date = ZonedDateTime.ofInstant(resource.getModificationDate(), ZoneOffset.UTC);
 		}
-		return new Article(resource, category, type, lang, title, author, date, source, file, parseFileExt(file), resource.getUrl());
+		return new Article(resource, category, type, lang, title, author, date, source, resource.getUrl());
 	}
 
 	@Override
@@ -73,17 +68,6 @@ public final class Article implements Comparable<Article> {
 			return langRes;
 		}
 		return title.compareTo(o.title);
-	}
-
-	private static String parseFileExt(String file) {
-		if (file == null) {
-			return null;
-		}
-		int dotIndex = file.lastIndexOf('.');
-		if (dotIndex == -1 || dotIndex == file.length() - 1) {
-			return null;
-		}
-		return file.substring(dotIndex + 1).toLowerCase();
 	}
 
 	public boolean isSameCategory(Article article) {
@@ -126,4 +110,17 @@ public final class Article implements Comparable<Article> {
 		return new OutputStreamWriter(resource.outputStream(), UTF_8);
 	}
 
+	public String getAttachmentResourcePath() {
+		try{
+			resource.getAttachment().transfer(); //copy file whe it is used
+			return resource.getAttachmentPath();
+		} catch (Exception e) {
+			log.error("Can't process attachment {}",resource.getAttachmentPath(), e);
+		}
+		return null;
+	}
+
+	public String getAttachmentType() {
+		return resource.getAttachmentType();
+	}
 }

@@ -17,7 +17,6 @@ import static java.nio.file.StandardOpenOption.READ;
 import static java.util.function.Predicate.not;
 
 @Slf4j
-
 public record WatermarkFilterFactory(FileSystemRegistry fsRegistry) {
 
 	public Consumer<BufferedImage> create(String watermarkText, URI watermarkFile) {

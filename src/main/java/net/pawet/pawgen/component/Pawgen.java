@@ -14,56 +14,52 @@ import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
 import net.pawet.pawgen.component.resource.img.WatermarkFilterFactory;
 import net.pawet.pawgen.component.system.CliOptions;
 import net.pawet.pawgen.component.system.ProcessingExecutorService;
-import net.pawet.pawgen.component.system.storage.*;
+import net.pawet.pawgen.component.system.storage.DigestAwareResource;
+import net.pawet.pawgen.component.system.storage.FileSystemRegistry;
+import net.pawet.pawgen.component.system.storage.Resource;
+import net.pawet.pawgen.component.system.storage.Storage;
 import net.pawet.pawgen.component.xml.ArticleParser;
 
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.function.Consumer;
-import java.util.function.IntSupplier;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toUnmodifiableSet;
 
 @Slf4j
 @RequiredArgsConstructor
 public class Pawgen implements AutoCloseable {
 
+	private final Clock clock = Clock.systemUTC();
 	private final ProcessingExecutorService processingExecutor;
 	private final ArticleHeaderQuery queryService;
 	private final Renderer renderer;
 	private final FileSystemRegistry fsRegistry;
 	private final Storage storage;
-	private final StaticFileService staticFileService;
-	private final Consumer<Stream<FileDigestData>> deployer;
-	private final Supplier<Duration> imagesProcessingTime;
-	private final Clock clock;
+	private final ResourceFactory resourceFactory;
 	private final boolean cleanupOutputDir;
 
-	public static Pawgen create(CliOptions opts, Clock clock, int processingThreads) {
+	public static Pawgen create(CliOptions opts, int processingThreads) {
 		var fsRegistry = new FileSystemRegistry();
+		var staticDirs = opts.getStaticUris().stream()
+			.flatMap(fsRegistry::parseCopyDir)
+			.collect(toUnmodifiableSet());
+		Path contentDir = fsRegistry.getPathFsRegistration(opts.getContentUri());
 		Path outputDir = fsRegistry.getPathFsRegistration(opts.getOutputUri());
-		var staticFileService = new StaticFileService(opts.getStaticUris(), fsRegistry);
-		var storage = Storage.create(staticFileService::resolve, fsRegistry.getPathFsRegistration(opts.getContentUri()), outputDir);
+		var storage = Storage.create(staticDirs, contentDir, outputDir);
 		var watermarkFilter = new WatermarkFilterFactory(fsRegistry).create(opts.getWatermarkText(), opts.getWatermarkUri());
-		var imageFactory = ProcessableImageFactory.of(clock, watermarkFilter);
+		var imageFactory = ProcessableImageFactory.of(watermarkFilter, 250);
 		var processingExecutor = new ProcessingExecutorService(processingThreads);
 		var resourceFactory = new ResourceFactory(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()));
 		var queryService = new ArticleHeaderQuery(storage, new ArticleParser(resourceFactory));
 		var renderer = Renderer.of(templater, queryService, processingExecutor);
-		var deployerFactory = new DeployerFactory(opts.getNetlifyUrl(), opts.getAccessToken(), opts.getSiteId());
-		return new Pawgen(processingExecutor, queryService, renderer, fsRegistry, storage, staticFileService, deployerFactory.create(opts.isNetlifyEnabled()), imageFactory::getProcessingTime, clock, opts.isCleanupOutputDir());
+		return new Pawgen(processingExecutor, queryService, renderer, fsRegistry, storage, resourceFactory, opts.isCleanupOutputDir());
 	}
 
-	public Duration deploy() {
-		return measure(this::deployInternal);
-	}
-
-	public void deployInternal() {
-		try (var items = storage.readOutputDir()) {
-			deployer.accept(items.map(DigestAwareResourceFile::new));
-		}
+	public Stream<FileDigestData> readOutputDir() {
+		return storage.readOutputDir().map(DigestAwareResourceFile::new);
 	}
 
 	public Duration cleanupOutputDir() {
@@ -77,7 +73,14 @@ public class Pawgen implements AutoCloseable {
 		}
 	}
 
-	private record DigestAwareResourceFile(@Delegate(types = FileDigestData.class) DigestAwareResource resource) implements FileDigestData {
+	public Duration copyFiles() {
+		return measure(this::copyFilesInternal);
+	}
+
+	public void copyFilesInternal() {
+		try (var files = storage.copyFiles()) {
+			files.forEach(Resource::transfer);
+		}
 	}
 
 	public Duration render() {
@@ -93,25 +96,12 @@ public class Pawgen implements AutoCloseable {
 		assert storage.assertChecksums() : "Some checksum are inconsistent";
 	}
 
-	public Duration copyStaticResources() {
-		return measure(this::copyStaticResourcesInternal);
-	}
-
 	public Duration getImageProcessingTime() {
-		return imagesProcessingTime.get();
+		return resourceFactory.getImageProcessingTime();
 	}
 
-	public void copyStaticResourcesInternal() {
-		log.info("Copying static resources");
-		staticFileService.copyStaticResources(storage::resource)
-			.filter(SimpleResource::isNewOrChanged)
-			.forEach(res -> {
-				try {
-					res.transfer();
-				} catch (Exception e) {
-					log.error("Can't copy resource '{}'", res, e);
-				}
-			});
+	public Duration getCopyResourcesTime() {
+		return resourceFactory.getResourceProcessingTime();
 	}
 
 	@Override
@@ -129,3 +119,5 @@ public class Pawgen implements AutoCloseable {
 
 }
 
+record DigestAwareResourceFile(@Delegate(types = FileDigestData.class) DigestAwareResource resource) implements FileDigestData {
+}

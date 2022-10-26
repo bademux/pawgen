@@ -27,6 +27,12 @@ public final class ArticleResource implements Resource {
 	@Delegate(types = {ReadableResource.class, WritableResource.class})
 	private final Resource resource;
 	@Getter
+	private final Resource attachment;
+	@Getter
+	private final String attachmentPath;
+	@Getter
+	private final String attachmentType;
+	@Getter
 	private final Instant modificationDate;
 	@Getter
 	private final String url;
@@ -34,10 +40,10 @@ public final class ArticleResource implements Resource {
 	private static final CharsetEncoder CODER = UTF_8.newEncoder();
 	private static final String EXT = ".html";
 
-	public static ArticleResource of(CategoryAwareResource resource, String title, UnaryOperator<InputStream> contentSupplier) {
+	public static ArticleResource of(CategoryAwareResource resource, String title, String file, UnaryOperator<InputStream> contentSupplier) {
 		String url = createUrl(resource.getCategory(), title);
 		return new ArticleResource(new Resource() {
-			final SimpleResource res = resource.storage.resource(resource.srcPath, url);
+			final Resource res = resource.storage.resource(resource.srcPath, url).orElseThrow();
 
 			@Override
 			public InputStream inputStream() {
@@ -48,7 +54,7 @@ public final class ArticleResource implements Resource {
 			public OutputStream outputStream() {
 				return res.outputStream();
 			}
-		}, resource.getModificationDate(), url);
+		},resource.storage.resource(file).orElse(Resource.EMPTY), file, parseFileExt(file), resource.getModificationDate(), url);
 	}
 
 	static String createUrl(Category category, String title) {
@@ -81,4 +87,15 @@ public final class ArticleResource implements Resource {
 		return new String(out.array(), 0, out.position(), UTF_8);
 	}
 
+
+	static String parseFileExt(String file) {
+		if (file == null) {
+			return null;
+		}
+		int dotIndex = file.lastIndexOf('.');
+		if (dotIndex == -1 || dotIndex == file.length() - 1) {
+			return null;
+		}
+		return file.substring(dotIndex + 1).toLowerCase();
+	}
 }

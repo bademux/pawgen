@@ -25,7 +25,7 @@ public class ArticleHeaderQuery {
 	}
 
 	private Collection<Article> readArticleByCategory(Category category) {
-		try (var headers = articleParser.parse(storage.resource(category))) {
+		try (var headers = articleParser.parse(storage.categoryAwareResource(category))) {
 			return headers.collect(Collectors.toList());
 		}
 	}

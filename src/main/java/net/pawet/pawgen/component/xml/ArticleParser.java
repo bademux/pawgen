@@ -45,8 +45,7 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 				.flatMap(xmlEvent -> parse(xmlEvent, readable))
 				.onClose(xmlr::close);
 		} catch (Exception e) {
-			log.error("Can't parse article in '{}' [{}], skipping", category, e.getMessage());
-			log.debug("Can't parse article", e);
+			log.error("Can't parse article in '{}', skipping", category, e);
 			return Stream.empty();
 		}
 	}
@@ -87,13 +86,13 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 		Category category = resource.getCategory();
 		String title = getTitle(attr);
 		var contentParser = new ContentParser((n, attrs) -> resourceFactory.createResource(n, category, attrs));
-		var res = ArticleResource.of(resource, title, is -> new ByteArrayInputStream(contentParser.read(is, title).toString().getBytes(UTF_8)));
 		QName defQName = getWithPrefix(elementQName, attr.getName());
+		String file = getFile(startElement, defQName);
+		var res = ArticleResource.of(resource, title, file, is -> new ByteArrayInputStream(contentParser.read(is, title).toString().getBytes(UTF_8)));
 		return Article.of(res, category, name.trim(), defQName.getPrefix().toLowerCase(), title,
 			getAuthor(startElement, defQName),
 			getDate(startElement, defQName),
-			getSource(startElement, defQName),
-			getFile(startElement, defQName));
+			getSource(startElement, defQName));
 	}
 
 	static String getTitle(Attribute attr) {

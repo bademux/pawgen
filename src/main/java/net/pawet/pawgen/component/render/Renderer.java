@@ -16,7 +16,6 @@ import java.util.function.Function;
 
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.*;
-import static lombok.AccessLevel.PACKAGE;
 import static lombok.AccessLevel.PRIVATE;
 
 @Slf4j
@@ -109,11 +108,11 @@ public class Renderer {
 		}
 
 		String getFile() {
-			return header.getFile();
+			return header.getAttachmentResourcePath();
 		}
 
 		String getFileExt() {
-			return header.getFileExt();
+			return header.getAttachmentType();
 		}
 
 		String getLang() {
