@@ -50,15 +50,6 @@ public class Renderer {
 
 		@Synchronized
 		public void render() {
-			if (processedFiles.contains(header)) {
-				log.trace("Already processed, skipping {}", header);
-				return;
-			}
-			Renderer.this.render(this);
-			processedFiles.add(header);
-		}
-
-		private void renderInternal() {
 			if (isLegacy()) {
 				log.debug("legacy article, skipping {}", header);
 				return;
@@ -67,16 +58,17 @@ public class Renderer {
 				log.trace("Already processed, skipping {}", header);
 				return;
 			}
-			executor.execute(this::render);
+			executor.execute(() -> Renderer.this.render(this));
+			processedFiles.add(header);
 		}
 
 		Iterator<ArticleContext> getOtherLangArticle() {
-			return queryService.get(header.getCategory()).filter(not(header::isSameLang)).map(Renderer.this::create).peek(ArticleContext::renderInternal).iterator();
+			return queryService.get(header.getCategory()).filter(not(header::isSameLang)).map(Renderer.this::create).peek(ArticleContext::render).iterator();
 
 		}
 
 		Iterator<ArticleContext> getChildren() {
-			return queryService.getChildren(header.getCategory()).map(Renderer.this::create).peek(ArticleContext::renderInternal).collect(groupingBy(ArticleContext::getCategory, TreeMap::new, toList())).values().stream().map(this::chooseTheBestSuitableLang).flatMap(Optional::stream).iterator();
+			return queryService.getChildren(header.getCategory()).map(Renderer.this::create).peek(ArticleContext::render).collect(groupingBy(ArticleContext::getCategory, TreeMap::new, toList())).values().stream().map(this::chooseTheBestSuitableLang).flatMap(Optional::stream).iterator();
 		}
 
 		Optional<ArticleContext> getParent() {
@@ -84,7 +76,7 @@ public class Renderer {
 			if (parentCategory == null) {
 				return Optional.empty();
 			}
-			return queryService.get(parentCategory).map(Renderer.this::create).peek(ArticleContext::renderInternal).collect(collectingAndThen(toList(), this::chooseTheBestSuitableLang));
+			return queryService.get(parentCategory).map(Renderer.this::create).peek(ArticleContext::render).collect(collectingAndThen(toList(), this::chooseTheBestSuitableLang));
 		}
 
 		String relativize(String value) {
