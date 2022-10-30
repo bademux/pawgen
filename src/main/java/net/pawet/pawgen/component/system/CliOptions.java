@@ -108,7 +108,6 @@ public final class CliOptions {
 		return fileName -> fileName.endsWith(".properties");
 	}
 
-
 	private static void parseConfigFile(Function<String, Optional<String>> propertyProvider, CliOptionsBuilder optionsBuilder) {
 		propertyProvider.apply("watermark.text")
 			.ifPresent(optionsBuilder::watermarkText);

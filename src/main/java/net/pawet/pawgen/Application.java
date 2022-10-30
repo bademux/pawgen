@@ -1,15 +1,20 @@
 package net.pawet.pawgen;
 
+import lombok.EqualsAndHashCode;
+import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Pawgen;
 import net.pawet.pawgen.component.netlify.DeployerFactory;
+import net.pawet.pawgen.component.netlify.FileDigestData;
 import net.pawet.pawgen.component.system.CliOptions;
+import net.pawet.pawgen.component.system.storage.DigestAwareResource;
 
+import java.io.InputStream;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 public class Application {
@@ -24,19 +29,18 @@ public class Application {
 		long start = CLOCK.millis();
 		var config = CliOptions.parse(args);
 		log.info("Executed with config: {}", config);
-		try (var app = setupShutdownHook(Pawgen.create(config, Runtime.getRuntime().availableProcessors()))) {
+		try (var app = setupShutdownHook(Pawgen.create(config))) {
 			var cleanupIn = app.cleanupOutputDir();
 			var renderIn = app.render();
 			long startDeploy = CLOCK.millis();
 			try (var files = app.readOutputDir()) {
 				new DeployerFactory(config.getNetlifyUrl(), config.getAccessToken(), config.getSiteId(), config.isNetlifyEnabled())
 					.create()
-					.accept(files);
+					.accept(files.map(DigestAwareResourceFile::new).toList());
 			}
 			log.info("Cleanup {}min, render {}min, img processing {}min, copy resources {}min, deploy {}min",
 				cleanupIn.toMinutes(), renderIn.toMinutes(), app.getImageProcessingTime().toMinutes(), app.getCopyResourcesTime().toMinutes(), Duration.ofMillis(CLOCK.millis() - startDeploy).toMinutes()
 			);
-
 		} catch (Throwable e) {
 			log.error("Unrecoverable error: {}", e.getMessage(), e);
 			CliOptions.handleError(e).forEach(log::error);
@@ -46,7 +50,6 @@ public class Application {
 		}
 		return 0;
 	}
-
 	private static Pawgen setupShutdownHook(Pawgen app) {
 		Runtime.getRuntime().addShutdownHook(new Thread(app::close));
 		return app;
@@ -62,3 +65,26 @@ public class Application {
 
 }
 
+@ToString(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@RequiredArgsConstructor
+final class DigestAwareResourceFile implements FileDigestData {
+	private final DigestAwareResource resource;
+
+	@ToString.Include
+	@EqualsAndHashCode.Include
+	public String getRootRelativePath() {
+		return this.resource.getRootRelativePath();
+	}
+
+	@ToString.Include
+	@EqualsAndHashCode.Include
+	public String getDigest() {
+		return this.resource.getDigest();
+	}
+
+	public InputStream inputStream() {
+		return this.resource.inputStream();
+	}
+
+}

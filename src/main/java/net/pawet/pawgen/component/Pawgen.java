@@ -39,7 +39,7 @@ public class Pawgen implements AutoCloseable {
 	private final ResourceFactory resourceFactory;
 	private final boolean cleanupOutputDir;
 
-	public static Pawgen create(CliOptions opts, int processingThreads) {
+	public static Pawgen create(CliOptions opts) {
 		var fsRegistry = new FileSystemRegistry();
 		var staticDirs = opts.getStaticUris().stream()
 			.flatMap(fsRegistry::parseCopyDir)
@@ -49,7 +49,7 @@ public class Pawgen implements AutoCloseable {
 		var storage = Storage.create(staticDirs, contentDir, outputDir);
 		var watermarkFilter = new WatermarkFilterFactory(fsRegistry).create(opts.getWatermarkText(), opts.getWatermarkUri());
 		var imageFactory = ProcessableImageFactory.of(watermarkFilter, 250);
-		var processingExecutor = new ProcessingExecutorService(processingThreads * 2);
+		var processingExecutor = new ProcessingExecutorService();
 		var resourceFactory = new ResourceFactory(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()));
 		var queryService = new ArticleHeaderQuery(storage, new ArticleParser(resourceFactory));
@@ -57,8 +57,8 @@ public class Pawgen implements AutoCloseable {
 		return new Pawgen(processingExecutor, queryService, renderer, fsRegistry, storage, resourceFactory, opts.isCleanupOutputDir());
 	}
 
-	public Stream<FileDigestData> readOutputDir() {
-		return storage.readOutputDir().map(DigestAwareResourceFile::new);
+	public Stream<DigestAwareResource> readOutputDir() {
+		return storage.readOutputDir();
 	}
 
 	public Duration cleanupOutputDir() {
@@ -116,5 +116,3 @@ public class Pawgen implements AutoCloseable {
 
 }
 
-record DigestAwareResourceFile(@Delegate(types = FileDigestData.class) DigestAwareResource resource) implements FileDigestData {
-}

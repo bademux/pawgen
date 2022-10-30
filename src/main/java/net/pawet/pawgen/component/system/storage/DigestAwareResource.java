@@ -8,21 +8,25 @@ import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.joining;
-import static net.pawet.pawgen.component.system.storage.Sha1DigestService.encode;
+import static net.pawet.pawgen.component.system.storage.Sha1DigestService.formatHex;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class DigestAwareResource implements ReadableResource {
 
 	@Getter
+	@ToString.Include
+	@EqualsAndHashCode.Include
 	private final String digest;
 	@Getter
+	@ToString.Include
+	@EqualsAndHashCode.Include
 	private final String rootRelativePath;
 	private final Supplier<InputStream> inputStreamSupplier;
 
 	static DigestAwareResource of(byte[] digest, Path srcPath, Path relativePath, Storage storage) {
-		return new DigestAwareResource(encode(digest), getRelative(relativePath), () -> storage.read(srcPath));
+		return new DigestAwareResource(formatHex(digest), getRelative(relativePath), () -> storage.read(srcPath));
 	}
 
 	private static String getRelative(Path relativePath) {

@@ -30,6 +30,7 @@ compileJava.dependsOn generateJava
 compileJava {
 	sourceCompatibility = jdkVersion
 	targetCompatibility = jdkVersion
+//	options.compilerArgs += '--enable-preview'
 }
 
 java {
@@ -44,7 +45,7 @@ application {
 
 run {
 //	enableAssertions = true
-	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC']
+	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC'/*, '--enable-preview'*/]
 	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
 }
 
@@ -59,7 +60,7 @@ jlink {
 	launcher {
 		name = 'emk'
 		noConsole = true
-		jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', 'Dsun.jnu.encoding=UTF-8', '-Djava.util.logging.config.class=net.pawet.pawgen.utils.LoggingConfig']
+		jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', /*'--enable-preview', */'-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', 'Dsun.jnu.encoding=UTF-8', '-Djava.util.logging.config.class=net.pawet.pawgen.utils.LoggingConfig']
 	}
 
 	targetPlatform("$jdkVersion-linux-x64") {
@@ -120,7 +121,28 @@ test {
 	useJUnitPlatform()
 }
 
+task downloadLombok() {
+	inputs.property('lombokSrc', 'https://github.com/projectlombok/lombok/files/9745621/lombok-jdk19-20221010.zip')
+	outputs.files file("$buildDir/lombok.zip")
+	doLast {
+		ant.get(src: inputs.properties.lombokSrc, dest: tasks.downloadLombok.outputs.files.singleFile)
+	}
+}
+
+task installLombok(type: Sync, dependsOn: tasks.downloadLombok) { task ->
+	def extractDir = file("${buildDir}/ext-libs")
+	outputs.files fileTree(extractDir) {
+		include "**/*.jar"
+		builtBy task
+	}
+	from zipTree(tasks.downloadLombok.outputs.files.singleFile)
+	into extractDir
+}
+
 dependencies {
+
+//	compileOnly files({ tasks.installLombok.outputs.files })
+//	annotationProcessor files({ tasks.installLombok.outputs.files })
 	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion

@@ -33,8 +33,7 @@ class NetlifyDeployer {
 	}
 
 	@SneakyThrows
-	public final <T extends FileDigest & FileData> void deploy(Stream<T> files) {
-		var toBeDeployed = files.collect(toList());
+	public final <T extends FileDigest & FileData> void deploy(Collection<T> toBeDeployed) {
 		retrier.deployWithRetry(new Deployer<>(this, toBeDeployed)::deploy);
 		log.debug("Deployed {} files", toBeDeployed.size());
 	}
@@ -156,6 +155,7 @@ final class Deployer<T extends FileDigest & FileData> {
 				var requiredFilesFor = client.getRequiredFilesFor(deployId).toList();
 				var files = requiredFilesFor.stream().map(unique::get).filter(Objects::nonNull).collect(toList());
 				log.info("Uploading {} files", files.size());
+				log.atTrace().setMessage("Uploading files: {}").addArgument(() -> files.stream().map(Object::toString).collect(joining())).log();
 				try {
 					long filesUploaded = client.uploadFiles(deployId, files);
 					log.info("Uploaded {} files, left: {}", filesUploaded, files.size() - filesUploaded);

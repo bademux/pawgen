@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -127,8 +128,12 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 		try (var os = resource.outputStream()) {
 			watermarkFilter.accept(image);
 			writeImage(image, formatName, os);
-		} catch (IOException e) {
-			log.error("exception while watermarking image '{}'", this, e);
+		} catch (Exception e) {
+			if(e instanceof FileAlreadyExistsException ef) {
+				log.trace("File already exists '{}' skipping '{}'", this, ef.getFile());
+				return;
+			}
+			log.error("Problem while watermarking image '{}'", this, e);
 		}
 	}
 

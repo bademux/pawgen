@@ -19,7 +19,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.nio.file.Files.createDirectories;
@@ -27,7 +26,6 @@ import static java.nio.file.Files.walk;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.function.Predicate.not;
 import static lombok.AccessLevel.PACKAGE;
-import static net.pawet.pawgen.component.system.storage.Sha1DigestService.encode;
 
 @Slf4j
 @RequiredArgsConstructor(access = PACKAGE)
@@ -50,19 +48,11 @@ public class Storage {
 
 	@SneakyThrows
 	public Stream<CategoryAwareResource> readChildren(String pathStr) {
-		var directoryStream = Files.newDirectoryStream(contentDir.resolve(pathStr), Files::isDirectory);
-		return StreamSupport.stream(directoryStream.spliterator(), false)
+		return Files.list(contentDir.resolve(pathStr))
+			.filter(Files::isDirectory)
 			.map(p -> p.resolve(ARTICLE_FILENAME))
-			.filter(Files::exists)
 			.filter(Files::isRegularFile)
-			.map(p -> new CategoryAwareResource(Category.of(contentDir.relativize(p).getParent()), p, this))
-			.onClose(() -> {
-				try {
-					directoryStream.close();
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
-			});
+			.map(p -> new CategoryAwareResource(Category.of(contentDir.relativize(p).getParent()), p, this));
 	}
 
 	public Optional<Resource> resource(String rootRelativePath) {
@@ -87,7 +77,6 @@ public class Storage {
 			.map(Category::toString)
 			.map(contentDir::resolve)
 			.map(c -> c.resolve(ARTICLE_FILENAME))
-			.filter(Files::exists)
 			.filter(Files::isRegularFile)
 			.map(path -> new CategoryAwareResource(category, path, this))
 			.orElseThrow();
@@ -147,13 +136,13 @@ public class Storage {
 	@SneakyThrows
 	OutputStream write(Path dest) {
 		assert dest.isAbsolute() : "expecting absolute path";
-		return digestService.write(dest, this::newOutputStream);
+		return digestService.write(dest, newOutputStream(dest));
 	}
 
 	@SneakyThrows
 	private OutputStream newOutputStream(Path dest) {
 		createDirsIfNeeded(dest.getParent());
-		return new BufferedOutputStream(Files.newOutputStream(dest, WRITE, TRUNCATE_EXISTING, CREATE));
+		return new BufferedOutputStream(Files.newOutputStream(dest, WRITE, TRUNCATE_EXISTING, CREATE_NEW));
 	}
 
 	private static void createDirsIfNeeded(Path dir) throws IOException {
@@ -203,23 +192,7 @@ public class Storage {
 	public boolean assertChecksums() {
 		log.info("Checking sums");
 		try (Stream<Path> items = readOutputDirInternal()) {
-			return items.map(this::assertChecksum).reduce(Boolean::equals).orElse(true);
-		}
-	}
-
-	private boolean assertChecksum(Path path) {
-		String digest = encode(digestService.load(path)), calculated = encode(calculateSha1(path));
-		if (digest.equals(calculated)) {
-			return true;
-		}
-		log.error("Digest error: got {}, expected {} - {}", digest, calculated, path);
-		return false;
-	}
-
-	@SneakyThrows
-	private static byte[] calculateSha1(Path path) {
-		try (var io = Files.newInputStream(path, READ)) {
-			return Sha1DigestService.computeSha1(io);
+			return items.map(digestService::assertChecksum).reduce(Boolean::equals).orElse(true);
 		}
 	}
 

@@ -22,11 +22,12 @@ import static java.util.Optional.ofNullable;
 @Slf4j
 final class MetaService {
 
-	private final Map<Entry<Path, String>, byte[]> data = new ConcurrentHashMap<>();
+	private final Map<Entry<Path, String>, byte[]> cache = new ConcurrentHashMap<>();
 
 	@SneakyThrows
 	public void store(Path target, String key, byte[] value) {
-		data.put(Map.entry(target, key), value);
+		var prev = cache.put(Map.entry(target, key), value);
+		assert prev == null : "Entry already exists with digest " + target;
 		log.trace("Store to file attribute '{}' for {}", target, key);
 		var attributeView = getFileAttributeView(target, UserDefinedFileAttributeView.class);
 		if (attributeView != null) {
@@ -45,7 +46,7 @@ final class MetaService {
 	@SneakyThrows
 	public Optional<byte[]> load(Path target, String key) {
 		return Optional.of(Map.entry(target, key))
-			.map(data::get)
+			.map(cache::get)
 			.or(() -> readAttribute(target, key))
 			.or(() -> readAttrFromFile(target, key));
 	}
