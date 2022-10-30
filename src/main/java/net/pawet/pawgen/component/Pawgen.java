@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.netlify.DeployerFactory;
 import net.pawet.pawgen.component.netlify.FileDigestData;
 import net.pawet.pawgen.component.render.ArticleHeaderQuery;
 import net.pawet.pawgen.component.render.Renderer;
@@ -50,7 +49,7 @@ public class Pawgen implements AutoCloseable {
 		var storage = Storage.create(staticDirs, contentDir, outputDir);
 		var watermarkFilter = new WatermarkFilterFactory(fsRegistry).create(opts.getWatermarkText(), opts.getWatermarkUri());
 		var imageFactory = ProcessableImageFactory.of(watermarkFilter, 250);
-		var processingExecutor = new ProcessingExecutorService(processingThreads);
+		var processingExecutor = new ProcessingExecutorService(processingThreads * 2);
 		var resourceFactory = new ResourceFactory(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()));
 		var queryService = new ArticleHeaderQuery(storage, new ArticleParser(resourceFactory));
@@ -73,11 +72,7 @@ public class Pawgen implements AutoCloseable {
 		}
 	}
 
-	public Duration copyFiles() {
-		return measure(this::copyFilesInternal);
-	}
-
-	public void copyFilesInternal() {
+	private void copyFiles() {
 		try (var files = storage.copyFiles()) {
 			files.forEach(Resource::transfer);
 		}
@@ -87,7 +82,9 @@ public class Pawgen implements AutoCloseable {
 		return measure(this::renderInternal);
 	}
 
+	@SneakyThrows
 	public void renderInternal() {
+		processingExecutor.execute(this::copyFiles);
 		log.info("Finding articles to be processed.");
 		try (var headers = queryService.get(Category.ROOT)) {
 			headers.map(renderer::create).forEach(Renderer.ArticleContext::render);

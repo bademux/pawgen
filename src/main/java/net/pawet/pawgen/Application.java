@@ -24,11 +24,9 @@ public class Application {
 		long start = CLOCK.millis();
 		var config = CliOptions.parse(args);
 		log.info("Executed with config: {}", config);
-		try (var app = setupShutdownHook(Pawgen.create(config, Runtime.getRuntime().availableProcessors() * 2))) {
+		try (var app = setupShutdownHook(Pawgen.create(config, Runtime.getRuntime().availableProcessors()))) {
 			var cleanupIn = app.cleanupOutputDir();
-			var copyTask = CompletableFuture.supplyAsync(app::copyFiles);
 			var renderIn = app.render();
-			var copyIn = copyTask.join();
 			long startDeploy = CLOCK.millis();
 			try (var files = app.readOutputDir()) {
 				new DeployerFactory(config.getNetlifyUrl(), config.getAccessToken(), config.getSiteId(), config.isNetlifyEnabled())
@@ -36,7 +34,7 @@ public class Application {
 					.accept(files);
 			}
 			log.info("Cleanup {}min, render {}min, img processing {}min, copy resources {}min, deploy {}min",
-				cleanupIn.toMinutes(), renderIn.toMinutes(), app.getImageProcessingTime().toMinutes(), app.getCopyResourcesTime().plus(copyIn).toMinutes(), Duration.ofMillis(CLOCK.millis() - startDeploy).toMinutes()
+				cleanupIn.toMinutes(), renderIn.toMinutes(), app.getImageProcessingTime().toMinutes(), app.getCopyResourcesTime().toMinutes(), Duration.ofMillis(CLOCK.millis() - startDeploy).toMinutes()
 			);
 
 		} catch (Throwable e) {
