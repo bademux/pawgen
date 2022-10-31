@@ -55,7 +55,7 @@ class ApplicationSpec extends Specification {
 <?xml version="1.0" encoding="UTF-8" ?>
 <body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl"><article en:title="newcat">newcat</article></body>
 ''')
-		var imageBmp = ImageUtil.createTestImageAsByte(46, 27)
+		var imageBmp = createTestImageAsByte(46, 27)
 		write(contentDir.resolve('image.bmp'), imageBmp)
 		writeString(contentDir.resolve('index.xml'), '''\
 <?xml version="1.0" encoding="UTF-8" ?>

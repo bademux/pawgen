@@ -7,7 +7,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.codehaus.groovy.runtime.EncodingGroovyMethods;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -143,7 +142,6 @@ public class PawgenFs implements AutoCloseable {
 		return writer.toString();
 	}
 
-	@NotNull
 	private Path getAttrFile(Path path, String attrName) {
 		if (Files.isDirectory(path)) {
 			return path.resolve('.' + attrName);

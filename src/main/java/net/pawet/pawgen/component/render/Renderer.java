@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
 
+import java.nio.file.FileAlreadyExistsException;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,7 +36,9 @@ public class Renderer {
 		try (var writer = context.header.writer()) {
 			templater.render(writer, context, context.header.readContent());
 			log.debug("Rendering: {}", context);
-		} catch (Exception e) {
+		} catch (FileAlreadyExistsException e) {
+			log.debug("Error while generating article {}.", context, e);
+		}catch (Exception e) {
 			log.error("Error while generating article {}.", context, e);
 		}
 	}
