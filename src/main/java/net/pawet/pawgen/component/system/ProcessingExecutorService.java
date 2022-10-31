@@ -2,16 +2,19 @@ package net.pawet.pawgen.component.system;
 
 import lombok.NonNull;
 import lombok.SneakyThrows;
+import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.concurrent.*;
-
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Phaser;
 
 @Slf4j
 public class ProcessingExecutorService implements Executor, AutoCloseable {
 
-	private final ExecutorService executor = new ThreadPoolExecutor(1, Runtime.getRuntime().availableProcessors() * 2, 100, MILLISECONDS, new LinkedBlockingQueue<>());
+	@Delegate(types = AutoCloseable.class)
+	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 	private final Phaser phaser = new Phaser(1);
 
 	@Override
@@ -30,12 +33,6 @@ public class ProcessingExecutorService implements Executor, AutoCloseable {
 	public void waitAllExecuted() {
 		phaser.arriveAndAwaitAdvance();
 		log.debug("Processed {}/{} tasks", phaser.getRegisteredParties() - 1,  phaser.getArrivedParties());
-	}
-
-
-	@Override
-	public void close() {
-		executor.shutdown();
 	}
 
 }
