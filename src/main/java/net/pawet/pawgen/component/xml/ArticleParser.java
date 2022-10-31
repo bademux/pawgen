@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.component.resource.ResourceFactory;
-import net.pawet.pawgen.component.system.storage.ArticleResourceWrapper;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
 
 import javax.xml.namespace.QName;
@@ -71,26 +70,25 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 		}
 		StartElement startElement = event.asStartElement();
 		QName elementQName = startElement.getName();
-		String name = elementQName.getLocalPart();
-		if (!ROOT_TAG_NAMES.contains(name)) {
+		String type = elementQName.getLocalPart();
+		if (!ROOT_TAG_NAMES.contains(type)) {
 			return Stream.empty();
 		}
 		return stream(spliteratorUnknownSize(startElement.getAttributes(), ORDERED | IMMUTABLE | NONNULL), false)
 			.filter(attr -> "title".equalsIgnoreCase(attr.getName().getLocalPart()))
-			.map(attr -> parse(resource, startElement, elementQName, name, attr));
+			.map(attr -> parse(resource, startElement, elementQName, type, attr));
 	}
 
-	private Article parse(ArticleResource resource, StartElement startElement, QName elementQName, String name, Attribute attr) {
+	private Article parse(ArticleResource resource, StartElement startElement, QName elementQName, String type, Attribute attr) {
 		Category category = resource.getCategory();
-		String title = getTitle(attr);
 		var contentParser = new ContentParser((n, attrs) -> resourceFactory.createResource(n, category, attrs));
 		QName defQName = getWithPrefix(elementQName, attr.getName());
-		String file = getFile(startElement, defQName);
-		var res = ArticleResourceWrapper.of(resource, title, file, () -> contentParser.read(resource.readable(), title));
-		return Article.of(res, name.trim(), defQName.getPrefix().toLowerCase(), title,
-			getAuthor(startElement, defQName),
-			getDate(startElement, defQName),
-			getSource(startElement, defQName));
+		String title = getTitle(attr);
+		String lang = defQName.getPrefix().toLowerCase();
+		return Article.of(resource, () -> contentParser.read(resource.readable(), title),
+			type, lang, title,
+			getAuthor(startElement, defQName), getDate(startElement, defQName), getSource(startElement, defQName),
+			getFile(startElement, defQName));
 	}
 
 	static String getTitle(Attribute attr) {

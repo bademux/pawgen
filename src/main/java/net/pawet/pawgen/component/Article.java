@@ -2,7 +2,7 @@ package net.pawet.pawgen.component;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.system.storage.ArticleResourceWrapper;
+import net.pawet.pawgen.component.system.storage.ArticleResource;
 import net.pawet.pawgen.component.system.storage.AttachmentResource;
 
 import java.io.Writer;
@@ -11,7 +11,7 @@ import java.net.URISyntaxException;
 import java.nio.channels.Channels;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.Optional;
+import java.util.function.Supplier;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static lombok.AccessLevel.PRIVATE;
@@ -25,7 +25,9 @@ public final class Article implements Comparable<Article> {
 	@ToString.Include
 	@EqualsAndHashCode.Include
 	@NonNull
-	private final ArticleResourceWrapper articleResource;
+	private final ArticleResource resource;
+	@NonNull
+	private final Supplier<CharSequence> readable;
 	@Getter
 	@ToString.Include
 	@NonNull
@@ -42,23 +44,21 @@ public final class Article implements Comparable<Article> {
 	private final String title;
 	@Getter
 	private final String author;
-	@Getter
 	private final ZonedDateTime date;
 	@Getter
 	private final String source;
-	@Getter
-	@NonNull
-	private final String url;
+	@Getter(value = PRIVATE, lazy = true)
+	private final AttachmentResource attachment = initAttachment();
+	@ToString.Include
+	@EqualsAndHashCode.Include
+	private final String file;
 
-	public static Article of(ArticleResourceWrapper resource, String type, String lang, String title, String author, ZonedDateTime date, String source) {
-		if (date == null) {
-			date = ZonedDateTime.ofInstant(resource.getModificationDate(), ZoneOffset.UTC);
-		}
-		return new Article(resource, type, lang, title, author, date, source, resource.getUrl());
+	public static Article of(ArticleResource resource, Supplier<CharSequence> contentSupplier, String type, String lang, String title, String author, ZonedDateTime date, String source, String file) {
+		return new Article(resource, contentSupplier, type, lang, title, author, date, source, file);
 	}
 
 	public Category getCategory(){
-		return articleResource.getCategory();
+		return resource.getCategory();
 	}
 
 	@Override
@@ -105,24 +105,41 @@ public final class Article implements Comparable<Article> {
 
 	@SneakyThrows
 	public CharSequence readContent() {
-		return articleResource.readContent();
+		return readable.get();
 	}
 
 	public Writer writer() {
-		return Channels.newWriter(articleResource.writable(), UTF_8);
+		return Channels.newWriter(resource.writableFor(title), UTF_8);
 	}
 
-	private Optional<AttachmentResource> getAttachment() {
-		var attachment = articleResource.getAttachment();
-		attachment.ifPresent(AttachmentResource::transfer);//copy file whe it is used
-		return attachment;
-	}
-	public Optional<String> getAttachmentUri() {
-		return getAttachment().map(AttachmentResource::getUri);
-	}
-
-	public Optional<String> getAttachmentType() {
-		return getAttachment().map(AttachmentResource::getType);
+	private AttachmentResource initAttachment() {
+		var attachment = resource.attachment(file);
+		if (attachment.isEmpty()) {
+			return null;
+		}
+		var attRes = attachment.get();
+		attRes.transfer();
+		return attRes;
 	}
 
+	public String getAttachmentUri() {
+		var attachment = getAttachment();
+		return attachment == null ? null : attachment.getUri();
+	}
+
+	public String getAttachmentType() {
+		var attachment = getAttachment();
+		return attachment == null ? null : attachment.getType();
+	}
+
+	public ZonedDateTime getDate() {
+		if (date == null) {
+			return ZonedDateTime.ofInstant(resource.getModificationDate(), ZoneOffset.UTC);
+		}
+		return date;
+	}
+
+	public String getUrl() {
+		return resource.urlFor(title);
+	}
 }

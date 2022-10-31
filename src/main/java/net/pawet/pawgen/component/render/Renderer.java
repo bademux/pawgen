@@ -100,11 +100,11 @@ public class Renderer {
 		}
 
 		String getFile() {
-			return header.getAttachmentUri().orElse(null);
+			return header.getAttachmentUri();
 		}
 
 		String getFileExt() {
-			return header.getAttachmentType().orElse(null);
+			return header.getAttachmentType();
 		}
 
 		String getLang() {
