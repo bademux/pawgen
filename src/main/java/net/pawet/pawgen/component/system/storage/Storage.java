@@ -110,8 +110,9 @@ public class Storage {
 		pathStr = pathStr.substring(1);
 		for (Path staticDir : staticDirs) {
 			Path targetPath = staticDir.getFileSystem().getPath(pathStr);
-			if (staticDir.startsWith(targetPath)) {
-				return targetPath.normalize();
+			Path staticDirName = staticDir.getFileName();
+			if (targetPath.startsWith(staticDirName)) {
+				return staticDir.resolve(staticDirName.relativize(targetPath));
 			}
 		}
 		log.debug("looks like url {} is invalid, try to fix", pathStr);
