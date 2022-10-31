@@ -13,6 +13,7 @@ import java.io.Writer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -27,11 +28,12 @@ public class Templater {
 	private final Mustache mustache;
 	private final Function<String, ReadableByteChannel> resourceReader;
 
-	public Templater(Function<String, ReadableByteChannel> resourceReader, Path templateDir) {
+	public Templater(Function<String, ReadableByteChannel> resourceReader, Path templateDir, ExecutorService executorService) {
 		this.resourceReader = resourceReader;
 		MustacheResolver mustacheResolver = ((Function<String, Path>) templateDir::resolve).andThen(Templater::resolveTemplate)::apply;
 		var mf = new DefaultMustacheFactory(mustacheResolver);
 		mf.setObjectHandler(new PawgenObjectHandler());
+		mf.setExecutorService(executorService);
 		this.mustache = mf.compile(TEMPLATE_NAME + DEFAULT_EXT);
 	}
 
