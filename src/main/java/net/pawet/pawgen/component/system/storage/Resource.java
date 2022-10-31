@@ -31,7 +31,7 @@ public interface Resource extends ReadableResource, WritableResource {
 			}
 			transfer(in, out);
 		} catch (FileAlreadyExistsException e) {
-			getLogger(Resource.class).trace("Already transferred: {}", ((FileAlreadyExistsException) e.getCause()).getFile());
+			getLogger(Resource.class).trace("Already transferred: {}", e.getFile());
 		}
 	}
 

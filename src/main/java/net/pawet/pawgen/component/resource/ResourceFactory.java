@@ -49,7 +49,7 @@ public final class ResourceFactory {
 			return resource.get();
 		} catch (Exception e) {
 			if (e instanceof NoSuchFileException) {
-				log.debug("No file found: {}", ((NoSuchFileException) e.getCause()).getFile());
+				log.debug("No file found: {}", ((NoSuchFileException) e).getFile());
 			} else {
 				log.error("exception while saving thumbnail", e);
 			}
