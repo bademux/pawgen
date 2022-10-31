@@ -3,7 +3,6 @@ package net.pawet.pawgen.component.resource.img;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.system.storage.ImageResource;
-import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 
 import javax.imageio.*;
 import javax.imageio.metadata.IIOMetadata;
@@ -140,9 +139,10 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 
 	@SneakyThrows
 	private String getAsBase64(BufferedImage thumbnailImage, String formatName) {
-		try (var os = new SeekableInMemoryByteChannel(thumbnailImage.getWidth() * thumbnailImage.getHeight() * 3)) {
+		var bos = new ByteArrayOutputStream(thumbnailImage.getWidth() * thumbnailImage.getHeight() * 3);
+		try (var os = BASE64_ENCODER.wrap(bos)) {
 			writeImage(thumbnailImage, formatName, os);
-			return "data:image/%s;base64,%s".formatted(formatName, BASE64_ENCODER.encodeToString(os.array()));
+			return "data:image/%s;base64,%s".formatted(formatName, bos.toString());
 		}
 	}
 

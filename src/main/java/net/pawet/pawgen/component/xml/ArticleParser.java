@@ -34,9 +34,8 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 	@SneakyThrows
 	public Stream<Article> parse(ArticleResource readable) {
 		var category = readable.getCategory();
-		var is = readable.readable();
 		try {
-			var xmlr = PawXMLEventReader.of(is);
+			var xmlr = PawXMLEventReader.of(readable.readable());
 			log.info("Parsing category '{}'", category);
 			return xmlEventStream(xmlr)
 				.flatMap(xmlEvent -> parse(xmlEvent, readable))
