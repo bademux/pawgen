@@ -1,9 +1,9 @@
 package net.pawet.pawgen.component.system.storage;
 
-import java.io.OutputStream;
+import java.nio.channels.WritableByteChannel;
 
 public interface WritableResource {
 
-	OutputStream outputStream();
+	WritableByteChannel writable();
 
 }

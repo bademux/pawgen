@@ -14,8 +14,10 @@ import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
-import java.io.InputStream;
+import java.io.IOException;
 import java.io.Writer;
+import java.nio.CharBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
@@ -35,8 +37,8 @@ record ContentParser(BiFunction<String, Map<String, String>, Map<String, String>
 	public static final Set<String> ROOT_TAG_NAMES = Set.of("article", "gallery");
 
 	@SneakyThrows
-	public CharSequence read(InputStream is, String title) {
-		try (var xmlReader = XmlReader.of(handleResource, is, title)) {
+	public CharSequence read(ReadableByteChannel in, String title) {
+		try (var xmlReader = XmlReader.of(handleResource, in, title)) {
 			return xmlReader.read();
 		}
 	}
@@ -49,8 +51,8 @@ class XmlReader implements AutoCloseable {
 	private final ArticleContentBody body;
 
 	@SneakyThrows
-	public static XmlReader of(BiFunction<String, Map<String, String>, Map<String, String>> handleResource, InputStream is, String title) {
-		var body = findBody(handleResource, PawXMLReader.of(is), title);
+	public static XmlReader of(BiFunction<String, Map<String, String>, Map<String, String>> handleResource, ReadableByteChannel is, String title) {
+		var body = findBody(handleResource, PawXMLEventReader.of(is), title);
 		return new XmlReader(body);
 	}
 
@@ -113,7 +115,8 @@ record ArticleContentBody(QName rootTag,
 		return new ArticleContentBody(rootTag, filter::filterAttributes, xmlFilteredReader, handleResource);
 	}
 
-	public void read(StringBuilder sb) throws XMLStreamException {
+	@SneakyThrows
+	public void read(Appendable sb) {
 		while (xmlr.hasNext()) {
 			XMLEvent event = xmlr.nextEvent();
 			if (event.isEndElement() && rootTag.equals(event.asEndElement().getName())) {
@@ -123,7 +126,7 @@ record ArticleContentBody(QName rootTag,
 		}
 	}
 
-	private void handleTag(StringBuilder sb, XMLEvent event) throws XMLStreamException {
+	private void handleTag(Appendable sb, XMLEvent event) throws XMLStreamException, IOException {
 		switch (event.getEventType()) {
 			case XMLStreamConstants.START_ELEMENT -> {
 				StartElement startElement = event.asStartElement();
@@ -140,7 +143,7 @@ record ArticleContentBody(QName rootTag,
 					));
 
 				handleResource.apply(name, attributes)
-					.forEach((key, value) -> sb.append(' ').append(key).append("=\"").append(value).append('"'));
+					.forEach((key, value) -> appendAttribute(sb, key, value));
 
 				if (isEmptyTag(name)) {
 					sb.append('/');
@@ -157,9 +160,10 @@ record ArticleContentBody(QName rootTag,
 				Characters characters = event.asCharacters();
 				if (!characters.isIgnorableWhiteSpace()) {
 					characters.writeAsEncodedUnicode(new Writer() {
+						@SneakyThrows
 						@Override
 						public void write(char @NonNull [] cbuf, int off, int len) {
-							sb.append(cbuf, off, len);
+							sb.append(CharBuffer.wrap(cbuf), off, len);
 						}
 
 						@Override
@@ -173,6 +177,11 @@ record ArticleContentBody(QName rootTag,
 				}
 			}
 		}
+	}
+
+	@SneakyThrows
+	private static Appendable appendAttribute(Appendable sb, String key, String value) {
+		return sb.append(' ').append(key).append("=\"").append(value).append('"');
 	}
 
 	private boolean isEmptyTag(String name) {

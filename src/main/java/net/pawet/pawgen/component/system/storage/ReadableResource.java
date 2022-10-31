@@ -1,9 +1,9 @@
 package net.pawet.pawgen.component.system.storage;
 
-import java.io.InputStream;
+import java.nio.channels.ReadableByteChannel;
 
 public interface ReadableResource {
 
-	InputStream inputStream();
+	ReadableByteChannel readable();
 
 }

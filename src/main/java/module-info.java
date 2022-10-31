@@ -5,6 +5,7 @@ module pawgen.main {
 
 	requires static lombok;
 	requires java.xml;
+	requires jdk.zipfs;
 	requires com.github.mustachejava;
 	requires java.desktop;
 	requires java.logging;

@@ -3,6 +3,7 @@ package net.pawet.pawgen.component.resource.img;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.system.storage.ImageResource;
+import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 
 import javax.imageio.*;
 import javax.imageio.metadata.IIOMetadata;
@@ -11,8 +12,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 import java.util.function.Consumer;
@@ -125,9 +124,9 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 	}
 
 	private void writeWatermarkedImage(BufferedImage image, String formatName) {
-		try (var os = resource.outputStream()) {
+		try (var out = resource.writable()) {
 			watermarkFilter.accept(image);
-			writeImage(image, formatName, os);
+			writeImage(image, formatName, out);
 		} catch (Exception e) {
 			if(e instanceof FileAlreadyExistsException ef) {
 				log.trace("File already exists '{}' skipping '{}'", this, ef.getFile());
@@ -141,10 +140,9 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 
 	@SneakyThrows
 	private String getAsBase64(BufferedImage thumbnailImage, String formatName) {
-		var bos = new ByteArrayOutputStream(thumbnailImage.getWidth() * thumbnailImage.getHeight() * 3);
-		try (var os = BASE64_ENCODER.wrap(bos)) {
+		try (var os = new SeekableInMemoryByteChannel(thumbnailImage.getWidth() * thumbnailImage.getHeight() * 3)) {
 			writeImage(thumbnailImage, formatName, os);
-			return "data:image/%s;base64,%s".formatted(formatName, bos.toString());
+			return "data:image/%s;base64,%s".formatted(formatName, BASE64_ENCODER.encodeToString(os.array()));
 		}
 	}
 
@@ -156,8 +154,8 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 		return (int) round(((double) height / width) * destDimension);
 	}
 
-	private static void writeImage(BufferedImage image, String formatName, OutputStream os) throws IOException {
-		try (var stream = requireNonNull(ImageIO.createImageOutputStream(os))) {
+	private static void writeImage(BufferedImage image, String formatName, Object out) throws IOException {
+		try (var stream = requireNonNull(ImageIO.createImageOutputStream(out))) {
 			@Cleanup("dispose") var imageWriter = getImageWriterBy(formatName);
 			imageWriter.setOutput(stream);
 			ImageWriteParam param = imageWriter.getDefaultWriteParam();
@@ -221,13 +219,13 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 	}
 
 	private Entry<String, BufferedImage> readImage() throws IOException {
-		try (var is = resource.inputStream()) {
-			return read(is);
+		try (var channel = resource.readable()) {
+			return read(channel);
 		}
 	}
 
-	private Entry<String, BufferedImage> read(InputStream is) throws IOException {
-		try (var iis = ImageIO.createImageInputStream(is)) {
+	private Entry<String, BufferedImage> read(Object channel) throws IOException {
+		try (var iis =  requireNonNull(ImageIO.createImageInputStream(channel))) {
 			@Cleanup("dispose") var reader = getImageReaderBy(iis);
 			reader.setInput(iis, true, true);
 			log.debug("Reading image {} with format {}", resource.getSrc(), reader.getFormatName());
@@ -236,7 +234,7 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 		}
 	}
 
-	private ImageReader getImageReaderBy(javax.imageio.stream.ImageInputStream stream) {
+	static ImageReader getImageReaderBy(javax.imageio.stream.ImageInputStream stream) {
 		return Optional.ofNullable(ImageIO.getImageReaders(stream))
 			.filter(Iterator::hasNext)
 			.map(Iterator::next)

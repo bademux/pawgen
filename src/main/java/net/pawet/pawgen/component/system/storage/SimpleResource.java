@@ -6,6 +6,8 @@ import lombok.ToString;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
 
 import static lombok.AccessLevel.PACKAGE;
@@ -20,16 +22,16 @@ public final class SimpleResource implements Resource {
 	final Path srcPath;
 	@ToString.Include
 	@EqualsAndHashCode.Include
-	private final Path destPath;
+	final Path destPath;
 	final Storage storage;
 
 	@Override
-	public InputStream inputStream() {
+	public ReadableByteChannel readable() {
 		return storage.read(srcPath);
 	}
 
 	@Override
-	public OutputStream outputStream() {
+	public WritableByteChannel writable() {
 		return storage.write(destPath);
 	}
 

@@ -5,15 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.component.resource.ResourceFactory;
+import net.pawet.pawgen.component.system.storage.ArticleResourceWrapper;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
-import net.pawet.pawgen.component.system.storage.CategoryAwareResource;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
-import java.io.ByteArrayInputStream;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -23,7 +22,6 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Spliterator.*;
 import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.StreamSupport.stream;
@@ -35,11 +33,11 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 	public static final Set<String> ROOT_TAG_NAMES = Set.of("article", "gallery");
 
 	@SneakyThrows
-	public Stream<Article> parse(CategoryAwareResource readable) {
+	public Stream<Article> parse(ArticleResource readable) {
 		var category = readable.getCategory();
-		var is = readable.inputStream();
+		var is = readable.readable();
 		try {
-			var xmlr = PawXMLReader.of(is);
+			var xmlr = PawXMLEventReader.of(is);
 			log.info("Parsing category '{}'", category);
 			return xmlEventStream(xmlr)
 				.flatMap(xmlEvent -> parse(xmlEvent, readable))
@@ -67,7 +65,7 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 		return stream(spliteratorUnknownSize(iterator, ORDERED | IMMUTABLE | NONNULL), false);
 	}
 
-	private Stream<Article> parse(XMLEvent event, CategoryAwareResource resource) {
+	private Stream<Article> parse(XMLEvent event, ArticleResource resource) {
 		if (!event.isStartElement()) {
 			return Stream.empty();
 		}
@@ -82,14 +80,14 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 			.map(attr -> parse(resource, startElement, elementQName, name, attr));
 	}
 
-	private Article parse(CategoryAwareResource resource, StartElement startElement, QName elementQName, String name, Attribute attr) {
+	private Article parse(ArticleResource resource, StartElement startElement, QName elementQName, String name, Attribute attr) {
 		Category category = resource.getCategory();
 		String title = getTitle(attr);
 		var contentParser = new ContentParser((n, attrs) -> resourceFactory.createResource(n, category, attrs));
 		QName defQName = getWithPrefix(elementQName, attr.getName());
 		String file = getFile(startElement, defQName);
-		var res = ArticleResource.of(resource, title, file, is -> new ByteArrayInputStream(contentParser.read(is, title).toString().getBytes(UTF_8)));
-		return Article.of(res, category, name.trim(), defQName.getPrefix().toLowerCase(), title,
+		var res = ArticleResourceWrapper.of(resource, title, file, () -> contentParser.read(resource.readable(), title));
+		return Article.of(res, name.trim(), defQName.getPrefix().toLowerCase(), title,
 			getAuthor(startElement, defQName),
 			getDate(startElement, defQName),
 			getSource(startElement, defQName));

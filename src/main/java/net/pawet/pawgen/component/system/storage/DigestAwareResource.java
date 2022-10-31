@@ -3,6 +3,7 @@ package net.pawet.pawgen.component.system.storage;
 import lombok.*;
 
 import java.io.InputStream;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
@@ -23,7 +24,7 @@ public final class DigestAwareResource implements ReadableResource {
 	@ToString.Include
 	@EqualsAndHashCode.Include
 	private final String rootRelativePath;
-	private final Supplier<InputStream> inputStreamSupplier;
+	private final Supplier<ReadableByteChannel> inputStreamSupplier;
 
 	static DigestAwareResource of(byte[] digest, Path srcPath, Path relativePath, Storage storage) {
 		return new DigestAwareResource(formatHex(digest), getRelative(relativePath), () -> storage.read(srcPath));
@@ -36,7 +37,7 @@ public final class DigestAwareResource implements ReadableResource {
 	}
 
 	@Override
-	public InputStream inputStream() {
+	public ReadableByteChannel readable() {
 		return inputStreamSupplier.get();
 	}
 }

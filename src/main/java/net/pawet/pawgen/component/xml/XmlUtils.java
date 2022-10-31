@@ -23,8 +23,8 @@ class XmlUtils {
 		return factory;
 	}
 
-	static XMLEventReader createXMLEventReader(InputStream is) throws IOException, XMLStreamException {
-		return factory.createXMLEventReader(skipBOM(new InputStreamReader(is, UTF_8)));
+	static XMLEventReader createXMLEventReader(Reader reader) throws IOException, XMLStreamException {
+		return factory.createXMLEventReader(skipBOM(reader));
 	}
 
 	static Reader skipBOM(Reader reader) throws IOException {

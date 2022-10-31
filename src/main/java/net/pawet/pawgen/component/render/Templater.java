@@ -10,6 +10,7 @@ import net.pawet.pawgen.component.render.Renderer.ArticleContext;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
@@ -24,9 +25,9 @@ public class Templater {
 	private static final String TEMPLATE_NAME = "index.html";
 
 	private final Mustache mustache;
-	private final Function<String, InputStream> resourceReader;
+	private final Function<String, ReadableByteChannel> resourceReader;
 
-	public Templater(Function<String, InputStream> resourceReader, Path templateDir) {
+	public Templater(Function<String, ReadableByteChannel> resourceReader, Path templateDir) {
 		this.resourceReader = resourceReader;
 		MustacheResolver mustacheResolver = ((Function<String, Path>) templateDir::resolve).andThen(Templater::resolveTemplate)::apply;
 		var mf = new DefaultMustacheFactory(mustacheResolver);

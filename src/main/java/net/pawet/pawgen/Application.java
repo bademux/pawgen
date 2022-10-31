@@ -11,6 +11,7 @@ import net.pawet.pawgen.component.system.CliOptions;
 import net.pawet.pawgen.component.system.storage.DigestAwareResource;
 
 import java.io.InputStream;
+import java.nio.channels.Channels;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Arrays;
@@ -84,7 +85,7 @@ final class DigestAwareResourceFile implements FileDigestData {
 	}
 
 	public InputStream inputStream() {
-		return this.resource.inputStream();
+		return Channels.newInputStream(this.resource.readable());
 	}
 
 }

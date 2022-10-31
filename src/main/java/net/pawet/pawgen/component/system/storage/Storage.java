@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
 
 import java.io.*;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -47,12 +49,12 @@ public class Storage {
 	}
 
 	@SneakyThrows
-	public Stream<CategoryAwareResource> readChildren(String pathStr) {
+	public Stream<ArticleResource> readChildren(String pathStr) {
 		return Files.list(contentDir.resolve(pathStr))
 			.filter(Files::isDirectory)
 			.map(p -> p.resolve(ARTICLE_FILENAME))
 			.filter(Files::isRegularFile)
-			.map(p -> new CategoryAwareResource(Category.of(contentDir.relativize(p).getParent()), p, this));
+			.map(p -> new ArticleResource(Category.of(contentDir.relativize(p).getParent()), p, this));
 	}
 
 	public Optional<Resource> resource(String rootRelativePath) {
@@ -72,13 +74,13 @@ public class Storage {
 		return resourceCache.computeIfAbsent(Map.entry(src, dest), path -> new SimpleResource(path.getKey(), resolveOutputDir(dest), this));
 	}
 
-	public CategoryAwareResource categoryAwareResource(Category category) {
+	public ArticleResource categoryAwareResource(Category category) {
 		return Optional.ofNullable(category)
 			.map(Category::toString)
 			.map(contentDir::resolve)
 			.map(c -> c.resolve(ARTICLE_FILENAME))
 			.filter(Files::isRegularFile)
-			.map(path -> new CategoryAwareResource(category, path, this))
+			.map(path -> new ArticleResource(category, path, this))
 			.orElseThrow();
 	}
 
@@ -117,12 +119,12 @@ public class Storage {
 	}
 
 	@SneakyThrows
-	InputStream read(Path path) {
+	ReadableByteChannel read(Path path) {
 		assert path.isAbsolute() : "expecting absolute path";
-		return new BufferedInputStream(Files.newInputStream(path, READ));
+		return Files.newByteChannel(path, READ);
 	}
 
-	public InputStream readFromInput(String relativeToRoot) {
+	public ReadableByteChannel readFromInput(String relativeToRoot) {
 		return read(resolveInputDir(relativeToRoot));
 	}
 
@@ -134,15 +136,15 @@ public class Storage {
 	}
 
 	@SneakyThrows
-	OutputStream write(Path dest) {
+	WritableByteChannel write(Path dest) {
 		assert dest.isAbsolute() : "expecting absolute path";
-		return digestService.write(dest, newOutputStream(dest));
+		return digestService.write(dest, newWritableByteChannel(dest));
 	}
 
 	@SneakyThrows
-	private OutputStream newOutputStream(Path dest) {
+	private WritableByteChannel newWritableByteChannel(Path dest) {
 		createDirsIfNeeded(dest.getParent());
-		return new BufferedOutputStream(Files.newOutputStream(dest, WRITE, TRUNCATE_EXISTING, CREATE_NEW));
+		return Files.newByteChannel(dest, WRITE, TRUNCATE_EXISTING, CREATE_NEW);
 	}
 
 	private static void createDirsIfNeeded(Path dir) throws IOException {

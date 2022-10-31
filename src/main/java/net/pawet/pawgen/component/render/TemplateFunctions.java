@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -67,16 +70,17 @@ class TemplateFunctions {
 		return null;
 	}
 
-	public static CharSequence embed(Function<String, InputStream> resourceReader, String value) {
+	public static CharSequence embed(Function<String, ReadableByteChannel> resourceReader, String value) {
 		int delimPos = value.lastIndexOf('|');
 		int beginFormat = delimPos + 1;
 		boolean hasNoArguments = delimPos == -1 || beginFormat == value.length();
 		String args = hasNoArguments ? null : value.substring(beginFormat);
 		String data = hasNoArguments ? value : value.substring(0, delimPos);
-		try (var is = resourceReader.apply(data)) {
-			var os = new ByteArrayOutputStream(1024);
-			is.transferTo("base64".equals(args) ? BASE64_ENCODER.wrap(os) : os);
-			return os.toString(UTF_8);
+		try (var in = resourceReader.apply(data)) {
+			ByteBuffer buffer = ByteBuffer.allocate(1024);
+			in.read(buffer);
+			buffer.flip();
+			return UTF_8.decode("base64".equals(args) ? BASE64_ENCODER.encode(buffer) : buffer);
 		} catch (Exception e) {
 			log.error("Can't embed '{}'", value, e);
 		}

@@ -147,10 +147,10 @@ dependencies {
 //	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
 	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-jpeg', version: twelvemonkeysVersion
+	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: '1.4.0'
 	implementation group: 'jakarta.json', name: 'jakarta.json-api', version: jakartajsonVersion
 	implementation group: 'org.glassfish', name: 'jakarta.json', version: jakartajsonVersion, classifier: 'module'
 	implementation group: 'org.slf4j', name: 'slf4j-jdk14', version: slf4jVersion
-
 
 	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion

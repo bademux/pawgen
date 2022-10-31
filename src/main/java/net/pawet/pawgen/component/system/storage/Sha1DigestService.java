@@ -4,12 +4,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.function.Consumer;
 
 import static java.nio.file.StandardOpenOption.READ;
 
@@ -23,9 +27,9 @@ final class Sha1DigestService {
 
 	private final MetaService metaService;
 
-	public OutputStream write(Path path, OutputStream outputStream) throws Exception {
-		var os = new DigestOutputStream(outputStream, MessageDigest.getInstance(ALGORITHM));
-		return new ObservableCloseOutputStream(os, () -> storeDigest(path, os.getMessageDigest().digest()));
+	@SneakyThrows
+	public WritableByteChannel write(Path path, WritableByteChannel out) {
+		return new DigestWritableByteChannel(MessageDigest.getInstance(ALGORITHM), out, digest -> storeDigest(path, digest));
 	}
 
 	public boolean assertChecksum(Path path) {
@@ -67,21 +71,34 @@ final class Sha1DigestService {
 		return HEX_FORMAT.formatHex(data);
 	}
 
+
 }
 
-final class ObservableCloseOutputStream extends FilterOutputStream {
+@RequiredArgsConstructor
+final class DigestWritableByteChannel implements WritableByteChannel {
+	private final MessageDigest md;
+	private final WritableByteChannel channel;
+	private final Consumer<byte[]> digestListener;
 
-	private final Runnable observer;
+	@Override
+	public int write(ByteBuffer src) throws IOException {
+		int position = src.position();
+		md.update(src);
+		src.position(position);
+		return channel.write(src);
+	}
 
-	public ObservableCloseOutputStream(DigestOutputStream os, Runnable closeObserver) {
-		super(os);
-		this.observer = closeObserver;
+	@Override
+	public boolean isOpen() {
+		return channel.isOpen();
 	}
 
 	@Override
 	public void close() throws IOException {
-		super.close();
-		observer.run();
+		try {
+			channel.close();
+		} finally {
+			digestListener.accept(md.digest());
+		}
 	}
-
 }

@@ -2,14 +2,16 @@ package net.pawet.pawgen.component;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.system.storage.ArticleResource;
+import net.pawet.pawgen.component.system.storage.ArticleResourceWrapper;
+import net.pawet.pawgen.component.system.storage.AttachmentResource;
 
-import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.channels.Channels;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static lombok.AccessLevel.PRIVATE;
@@ -20,12 +22,10 @@ import static lombok.AccessLevel.PRIVATE;
 @Slf4j
 public final class Article implements Comparable<Article> {
 
-	private final ArticleResource resource;
-	@Getter
 	@ToString.Include
 	@EqualsAndHashCode.Include
 	@NonNull
-	private final Category category;
+	private final ArticleResourceWrapper articleResource;
 	@Getter
 	@ToString.Include
 	@NonNull
@@ -50,16 +50,20 @@ public final class Article implements Comparable<Article> {
 	@NonNull
 	private final String url;
 
-	public static Article of(ArticleResource resource, Category category, String type, String lang, String title, String author, ZonedDateTime date, String source) {
+	public static Article of(ArticleResourceWrapper resource, String type, String lang, String title, String author, ZonedDateTime date, String source) {
 		if (date == null) {
 			date = ZonedDateTime.ofInstant(resource.getModificationDate(), ZoneOffset.UTC);
 		}
-		return new Article(resource, category, type, lang, title, author, date, source, resource.getUrl());
+		return new Article(resource, type, lang, title, author, date, source, resource.getUrl());
+	}
+
+	public Category getCategory(){
+		return articleResource.getCategory();
 	}
 
 	@Override
 	public int compareTo(Article o) {
-		int categoryRes = category.compareTo(o.category);
+		int categoryRes = getCategory().compareTo(o.getCategory());
 		if (categoryRes != 0) {
 			return categoryRes;
 		}
@@ -71,7 +75,7 @@ public final class Article implements Comparable<Article> {
 	}
 
 	public boolean isSameCategory(Article article) {
-		return category.equals(article.category);
+		return getCategory().equals(article.getCategory());
 	}
 
 	public boolean isSameLang(Article article) {
@@ -79,14 +83,14 @@ public final class Article implements Comparable<Article> {
 	}
 
 	public boolean isChildFor(Article parent) {
-		return category.isChildFor(parent.getCategory());
+		return getCategory().isChildFor(parent.getCategory());
 	}
 
 	public String relativize(String url) {
 		if (url == null) {
 			return null;
 		}
-		return category.relativize(normalize(url));
+		return getCategory().relativize(normalize(url));
 	}
 
 	private String normalize(String url) {
@@ -101,26 +105,24 @@ public final class Article implements Comparable<Article> {
 
 	@SneakyThrows
 	public CharSequence readContent() {
-		try (var is = resource.inputStream()) {
-			return new String(is.readAllBytes(), UTF_8);
-		}
+		return articleResource.readContent();
 	}
 
 	public Writer writer() {
-		return new OutputStreamWriter(resource.outputStream(), UTF_8);
+		return Channels.newWriter(articleResource.writable(), UTF_8);
 	}
 
-	public String getAttachmentResourcePath() {
-		try{
-			resource.getAttachment().transfer(); //copy file whe it is used
-			return resource.getAttachmentPath();
-		} catch (Exception e) {
-			log.error("Can't process attachment {}",resource.getAttachmentPath(), e);
-		}
-		return null;
+	private Optional<AttachmentResource> getAttachment() {
+		var attachment = articleResource.getAttachment();
+		attachment.ifPresent(AttachmentResource::transfer);//copy file whe it is used
+		return attachment;
+	}
+	public Optional<String> getAttachmentUri() {
+		return getAttachment().map(AttachmentResource::getUri);
 	}
 
-	public String getAttachmentType() {
-		return resource.getAttachmentType();
+	public Optional<String> getAttachmentType() {
+		return getAttachment().map(AttachmentResource::getType);
 	}
+
 }

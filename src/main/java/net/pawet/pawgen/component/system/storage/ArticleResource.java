@@ -4,17 +4,17 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
-import lombok.experimental.Delegate;
 import net.pawet.pawgen.component.Category;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.charset.CharsetEncoder;
+import java.nio.file.Path;
 import java.time.Instant;
-import java.util.function.UnaryOperator;
+import java.util.Optional;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static lombok.AccessLevel.PROTECTED;
@@ -22,39 +22,39 @@ import static lombok.AccessLevel.PROTECTED;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
 @RequiredArgsConstructor(access = PROTECTED)
-public final class ArticleResource implements Resource {
-
-	@Delegate(types = {ReadableResource.class, WritableResource.class})
-	private final Resource resource;
-	@Getter
-	private final Resource attachment;
-	@Getter
-	private final String attachmentPath;
-	@Getter
-	private final String attachmentType;
-	@Getter
-	private final Instant modificationDate;
-	@Getter
-	private final String url;
+public final class ArticleResource implements ReadableResource {
 
 	private static final CharsetEncoder CODER = UTF_8.newEncoder();
 	private static final String EXT = ".html";
 
-	public static ArticleResource of(CategoryAwareResource resource, String title, String file, UnaryOperator<InputStream> contentSupplier) {
-		String url = createUrl(resource.getCategory(), title);
-		return new ArticleResource(new Resource() {
-			final Resource res = resource.storage.resource(resource.srcPath, url).orElseThrow();
+	@Getter
+	private final Category category;
+	@ToString.Include
+	@EqualsAndHashCode.Include
+	final Path srcPath;
+	final Storage storage;
 
-			@Override
-			public InputStream inputStream() {
-				return contentSupplier.apply(res.inputStream());
-			}
+	@Override
+	public ReadableByteChannel readable() {
+		return storage.read(srcPath);
+	}
 
-			@Override
-			public OutputStream outputStream() {
-				return res.outputStream();
-			}
-		},resource.storage.resource(file).orElse(Resource.EMPTY), file, parseFileExt(file), resource.getModificationDate(), url);
+	public Instant getModificationDate() {
+		return storage.getModificationDate(srcPath);
+	}
+
+	public WritableByteChannel writableFor(String title) {
+		return storage.resource(srcPath, createUrl( category,  title)).orElseThrow().writable();
+	}
+
+	public String urlFor(String title) {
+		return createUrl(category, title);
+	}
+
+	public Optional<AttachmentResource> attachment(String file) {
+		return Optional.ofNullable(file)
+			.flatMap(storage::resource)
+			.map(resource -> AttachmentResource.of(resource, category.relativize(file)));
 	}
 
 	static String createUrl(Category category, String title) {
@@ -87,15 +87,4 @@ public final class ArticleResource implements Resource {
 		return new String(out.array(), 0, out.position(), UTF_8);
 	}
 
-
-	static String parseFileExt(String file) {
-		if (file == null) {
-			return null;
-		}
-		int dotIndex = file.lastIndexOf('.');
-		if (dotIndex == -1 || dotIndex == file.length() - 1) {
-			return null;
-		}
-		return file.substring(dotIndex + 1).toLowerCase();
-	}
 }
