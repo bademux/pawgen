@@ -244,9 +244,9 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 	static BufferedImage resize(BufferedImage img, int width, int height) {
 		var thumbnailImage = new BufferedImage(width, height, img.getType());
 		@Cleanup("dispose") var graphics = thumbnailImage.createGraphics();
-		graphics.setRenderingHint(KEY_INTERPOLATION, VALUE_INTERPOLATION_BICUBIC);
+		graphics.setRenderingHint(KEY_INTERPOLATION, VALUE_INTERPOLATION_BILINEAR);
 		graphics.setRenderingHint(KEY_ANTIALIASING, VALUE_ANTIALIAS_ON);
-		graphics.setRenderingHint(KEY_RENDERING, VALUE_RENDER_SPEED);
+		graphics.setRenderingHint(KEY_RENDERING, VALUE_RENDER_QUALITY);
 		graphics.drawImage(img, 0, 0, width, height, null);
 		return thumbnailImage;
 	}
