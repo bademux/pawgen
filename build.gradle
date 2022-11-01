@@ -87,17 +87,17 @@ jlink {
 graalvmNative {
 	toolchainDetection = true
 	testSupport = false
+	metadataRepository {
+		enabled = true
+	}
 	binaries {
 		main {
 			// Main options
 			debug.set(true) // Determines if debug info should be generated, defaults to false
 			verbose.set(true) // Add verbose output, defaults to false
 			fallback.set(false) // Sets the fallback mode of native-image, defaults to false
-
-			// Advanced options
-			buildArgs '--install-exit-handlers', '--native-image-info'/*, '--static', '--report-unsupported-elements-at-runtime'*/
-			// Passes '-H:Extra' to the native image builder options. This can be used to pass parameters which are not directly supported by this extension
-			// Runtime options
+			quickBuild.set(false)
+			buildArgs '--install-exit-handlers', '--native-image-info', '--report-unsupported-elements-at-runtime'
 			runtimeArgs '--help' // Passes '--help' to built image, during "nativeRun" task
 			// Development options
 			agent.enabled.set(false) // Enables the reflection agent. Can be also set on command line using '-Pagent'

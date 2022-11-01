@@ -9,6 +9,9 @@
   "name":"[Lsun.security.pkcs.SignerInfo;"
 },
 {
+  "name":"com.github.jaiimageio.impl.common.PackageUtil"
+},
+{
   "name":"com.sun.crypto.provider.AESCipher$General",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
@@ -37,11 +40,15 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
-  "name":"com.sun.crypto.provider.HmacCore$HmacSHA384",
+  "name":"com.sun.crypto.provider.TlsKeyMaterialGenerator",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
   "name":"com.sun.crypto.provider.TlsMasterSecretGenerator",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.sun.crypto.provider.TlsPrfGenerator$V12",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
@@ -64,6 +71,12 @@
   "name":"java.security.SecureRandomParameters"
 },
 {
+  "name":"java.security.interfaces.ECPrivateKey"
+},
+{
+  "name":"java.security.interfaces.ECPublicKey"
+},
+{
   "name":"java.security.interfaces.RSAPrivateKey"
 },
 {
@@ -74,7 +87,7 @@
 },
 {
   "name":"java.util.Map",
-  "queriedMethods":[{"name":"get","parameterTypes":["java.lang.Object"] }]
+  "methods":[{"name":"get","parameterTypes":["java.lang.Object"] }]
 },
 {
   "name":"java.util.stream.Stream"
@@ -84,9 +97,9 @@
 },
 {
   "name":"javax.imageio.spi.ImageReaderWriterSpi",
-  "methods":[{"name":"getFormatNames","parameterTypes":[] }],
-  "queriedMethods":[
-    {"name":"getFileSuffixes","parameterTypes":[] },
+  "methods":[
+    {"name":"getFileSuffixes","parameterTypes":[] }, 
+    {"name":"getFormatNames","parameterTypes":[] }, 
     {"name":"getMIMETypes","parameterTypes":[] }
   ]
 },
@@ -97,10 +110,6 @@
   "name":"javax.security.auth.x500.X500Principal",
   "fields":[{"name":"thisX500Name"}],
   "methods":[{"name":"<init>","parameterTypes":["sun.security.x509.X500Name"] }]
-},
-{
-  "name":"sun.awt.X11FontManager",
-  "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
   "name":"sun.java2d.marlin.DMarlinRenderingEngine",
@@ -184,6 +193,10 @@
 },
 {
   "name":"sun.security.rsa.RSASignature$SHA256withRSA",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"sun.security.rsa.RSASignature$SHA512withRSA",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
