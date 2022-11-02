@@ -1,0 +1,213 @@
+plugins {
+	id 'application'
+	id 'groovy'
+	id 'com.palantir.git-version' version '0.15.0'
+	id 'org.gradlex.extra-java-module-info' version '1.1'
+	id 'org.gradlex.java-module-testing' version '1.0'
+	id 'org.graalvm.buildtools.native' version '0.9.16'
+}
+
+var details = versionDetails(prefix: 'v@')
+version "${details.lastTag}.${details.commitDistance}-${details.gitHash}" as String
+
+var generatedDir = file("$buildDir/generated/src/java")
+
+task generateJava() {
+	outputs.dir generatedDir
+	doLast {
+		var genFile = file("$generatedDir/build/Build.java")
+		mkdir genFile.parentFile
+		genFile.text = "package build; public interface Build { String VERSION = \"$project.version\"; }"
+	}
+}
+
+sourceSets.main.java.srcDir generatedDir
+compileJava.dependsOn generateJava
+
+compileJava {
+	sourceCompatibility = jdkVersion
+	targetCompatibility = jdkVersion
+	options.compilerArgs += '--enable-preview'
+}
+
+test {
+	jvmArgs += "--enable-preview"
+}
+
+java {
+	toolchain {
+		languageVersion.set(JavaLanguageVersion.of(jdkVersion))
+	}
+	modularity.inferModulePath = true
+}
+
+application {
+	applicationName 'pawgen'
+	mainClass.set('net.pawet.pawgen.Application')
+	mainModule.set('pawgen')
+}
+
+run {
+	enableAssertions = true
+	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '--enable-preview']
+	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
+}
+
+jar {
+	manifest {
+		attributes = ['Main-Class': application.mainClass.get(), 'Version': project.version]
+	}
+}
+
+graalvmNative {
+	toolchainDetection = true
+	testSupport = false
+	metadataRepository {
+		enabled = true
+	}
+	binaries {
+		main {
+			// Main options
+			debug.set(true) // Determines if debug info should be generated, defaults to false
+			verbose.set(true) // Add verbose output, defaults to false
+			fallback.set(false) // Sets the fallback mode of native-image, defaults to false
+			quickBuild.set(false)
+			buildArgs '--install-exit-handlers', '--native-image-info', '--report-unsupported-elements-at-runtime', '--initialize-at-run-time=net.pawet.pawgen.LoggingConfig'
+			runtimeArgs '--help' // Passes '--help' to built image, during "nativeRun" task
+			// Development options
+			agent.enabled.set(false) // Enables the reflection agent. Can be also set on command line using '-Pagent'
+		}
+	}
+}
+
+configurations {
+	fatJar.extendsFrom implementation
+	testRuntimeClasspath.exclude module: 'jai-imageio-core' // exclude loading image by mmap in tests
+}
+
+task fatJar(type: Jar) {
+	group 'Build'
+	manifest.attributes tasks.jar.manifest.attributes
+	archiveBaseName.set("$project.name-full")
+	from(
+		{ configurations.fatJar.collect({ it.isDirectory() ? it : zipTree(it) }) },
+		{ it.excludes = ['*.md', 'module-info.class'] }
+	)
+	with jar
+	duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+test {
+	useJUnitPlatform()
+}
+
+task downloadLombok() {
+	inputs.property('lombokSrc', 'https://github.com/projectlombok/lombok/files/9745621/lombok-jdk19-20221010.zip')
+	outputs.files file("$buildDir/lombok.zip")
+	doLast {
+		ant.get(src: inputs.properties.lombokSrc, dest: tasks.downloadLombok.outputs.files.singleFile)
+	}
+}
+
+task installLombok(type: Sync, dependsOn: tasks.downloadLombok) { task ->
+	var extractDir = file("${buildDir}/ext-libs")
+	outputs.files fileTree(extractDir) {
+		include "**/*.jar"
+		builtBy task
+	}
+	from zipTree(tasks.downloadLombok.outputs.files.singleFile)
+	into extractDir
+}
+
+dependencies {
+
+	compileOnly files({ tasks.installLombok.outputs.files })
+	annotationProcessor files({ tasks.installLombok.outputs.files })
+//	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+//	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	implementation project(path: ':imageio', configuration: 'moduleJar')
+	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
+	implementation group: 'jakarta.json', name: 'jakarta.json-api', version: jakartajsonVersion
+	implementation group: 'org.glassfish', name: 'jakarta.json', version: jakartajsonVersion, classifier: 'module'
+	implementation group: 'org.slf4j', name: 'slf4j-jdk14', version: slf4jVersion
+
+
+	testCompileOnly files({ tasks.installLombok.outputs.files })
+	testAnnotationProcessor files({ tasks.installLombok.outputs.files })
+//	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+//	testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+
+	testImplementation enforcedPlatform(group: 'org.spockframework', name: 'spock-bom', version: spockVersion)
+	testImplementation group: 'org.spockframework', name: 'spock-core'
+	testImplementation group: 'net.bytebuddy', name: 'byte-buddy', version: bytebuddyVersion
+	testImplementation group: 'org.objenesis', name: 'objenesis', version: objenesisVersion
+	testImplementation group: 'com.google.jimfs', name: 'jimfs', version: memoryfilesystemVersion
+	testImplementation group: 'com.github.tomakehurst', name: 'wiremock-jre8', version: wiremockVersion
+}
+
+extraJavaModuleInfo {
+	failOnMissingModuleInfo.set(true)
+	module('com.github.spullara.mustache.java:compiler', 'com.github.mustachejava') {
+		requires 'java.logging'
+
+		exports 'com.github.mustachejava'
+		exports 'com.github.mustachejava.reflect'
+		exports 'com.github.mustachejava.util'
+	}
+
+	module("imageio-$twelvemonkeysVersion-$jaiVersion-all.jar", 'imageio') {
+		requiresStatic 'java.desktop'
+
+		//imageio
+		exports 'com.twelvemonkeys.imageio.stream'
+		exports 'com.twelvemonkeys.imageio.color'
+		exports 'com.twelvemonkeys.imageio.plugins.jpeg'
+		exports 'com.twelvemonkeys.imageio.plugins.webp'
+		exports 'com.twelvemonkeys.imageio.plugins.tiff'
+
+
+		//jai
+		exports 'com.github.jaiimageio.impl.stream'
+		exports 'com.github.jaiimageio.impl.plugins.wbmp'
+		exports 'com.github.jaiimageio.impl.plugins.bmp'
+		exports 'com.github.jaiimageio.impl.plugins.gif'
+		exports 'com.github.jaiimageio.impl.plugins.pcx'
+		exports 'com.github.jaiimageio.impl.plugins.pnm'
+		exports 'com.github.jaiimageio.impl.plugins.raw'
+
+		ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageReaderSpi'
+		ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageWriterSpi'
+	}
+}
+
+task jlink(type: Exec, dependsOn: jar) {
+	group 'distribution'
+
+	outputs.dir project.file("$buildDir/jre")
+	var jdkPath = javaToolchains.compilerFor(java.toolchain).get().metadata.installationPath
+	workingDir buildDir
+	executable jdkPath.file('bin/jlink').asFile
+	args = [
+		'--module-path', (configurations.runtimeClasspath.files + jar.archiveFile.asFile.get()).join(':'),
+		'--add-modules', application.mainModule.get(),
+		'--output', outputs.files.singleFile.absolutePath,
+		'--launcher', "run=${application.mainModule.get()}/${application.mainClass.get()}",
+		'--compress', 2 as String, //zip
+		'--vm', 'server',
+		'--no-header-files', '--no-man-pages',
+		'--generate-cds-archive',
+		'--release-info', "add:APP_VERSION=$version",
+		'--vendor-bug-url', 'https://github.com/bademux/pawgen/issues',
+	]
+
+	doFirst {
+		outputs.files.singleFile.deleteDir() // jlink expects the output directory to not exist when it runs
+	}
+	doLast {
+		new File(outputs.files.singleFile, 'bin').listFiles({ it.name.startsWith('run') } as FileFilter).each {
+			def prefix = 'JLINK_VM_OPTIONS='
+			it.text = it.text.replace(prefix, """$prefix"${(run.jvmArgs + run.systemProperties.collect({ "-D$it.key=$it.value" })).join(' ')}" """)
+		}
+	}
+}
+

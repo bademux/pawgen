@@ -12,7 +12,7 @@ import java.util.logging.LogManager;
 
 public class LoggingConfig {
 
-	public LoggingConfig() {
+	static {
 		readLoggingConfiguration();
 	}
 

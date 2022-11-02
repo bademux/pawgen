@@ -1,0 +1,72 @@
+plugins {
+	id 'java-library'
+	id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+version "$twelvemonkeysVersion-$jaiVersion"
+
+java {
+	toolchain {
+		languageVersion.set(JavaLanguageVersion.of(jdkVersion))
+	}
+	modularity.inferModulePath = true
+}
+
+dependencies {
+	implementation platform(group: 'com.twelvemonkeys.bom', name: 'bom', version: twelvemonkeysVersion)
+	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-jpeg'
+	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-webp'
+	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-tiff'
+	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-core'
+	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-metadata'
+	implementation group: 'com.twelvemonkeys.common', name: 'common-image'
+	implementation group: 'com.twelvemonkeys.common', name: 'common-io'
+	implementation group: 'com.twelvemonkeys.common', name: 'common-lang'
+	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
+}
+
+shadowJar {
+	mergeServiceFiles()
+}
+
+configurations {
+	moduleJar {
+		canBeConsumed = true
+		canBeResolved = false
+	}
+}
+//
+//task patchModule(type: Exec, dependsOn: tasks.shadowJar) {
+//	group 'shadow'
+//
+//	var toolchain = project.extensions.getByType(JavaPluginExtension).toolchain
+//	var service = project.extensions.getByType(JavaToolchainService)
+//	var javacPath = service.compilerFor(toolchain).get().executablePath.asFile
+//
+//	workingDir buildDir
+//	executable javacPath
+//
+//	args = [
+//		'--patch-module', "imageio=${tasks.shadowJar.archiveFile.asFile.get()}"
+//		, sourceSets.main.resources.find { (it.name == 'module-info.java') }
+//		//'-d', 'build/classes'
+//	]
+//	tasks.shadowJar.finalizedBy it
+//}
+//
+//task appendModuleInfo(type: Jar, dependsOn: tasks.patchModule) {
+//	group 'shadow'
+//
+//	from zipTree(tasks.shadowJar.archiveFile)
+////	from tasks.compileJava.destinationDirectory.file('module-info.class')
+//	from sourceSets.main.resources.find { (it.name == 'module-info.class') }
+//	archiveBaseName.set(tasks.shadowJar.archiveBaseName)
+//	archiveVersion.set(tasks.shadowJar.archiveVersion)
+//	archiveClassifier.set('module')
+//	duplicatesStrategy = DuplicatesStrategy.FAIL
+//}
+
+
+artifacts {
+	moduleJar tasks.shadowJar
+}

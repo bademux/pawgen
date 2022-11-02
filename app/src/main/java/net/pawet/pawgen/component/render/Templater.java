@@ -7,7 +7,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.render.Renderer.ArticleContext;
 
-import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.channels.ReadableByteChannel;

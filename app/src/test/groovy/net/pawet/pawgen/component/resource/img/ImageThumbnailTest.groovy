@@ -1,3 +1,4 @@
+package net.pawet.pawgen.component.resource.img
 //package net.pawet.pawgen.component.resource.img
 //
 //import net.coobird.thumbnailator.filters.Watermark

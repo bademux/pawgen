@@ -98,8 +98,8 @@
 {
   "name":"javax.imageio.spi.ImageReaderWriterSpi",
   "methods":[
-    {"name":"getFileSuffixes","parameterTypes":[] }, 
-    {"name":"getFormatNames","parameterTypes":[] }, 
+    {"name":"getFileSuffixes","parameterTypes":[] },
+    {"name":"getFormatNames","parameterTypes":[] },
     {"name":"getMIMETypes","parameterTypes":[] }
   ]
 },
@@ -264,5 +264,17 @@
 {
   "name":"sun.security.x509.SubjectKeyIdentifierExtension",
   "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
-}
+},
+	{
+		"name" : "java.util.logging.FileHandler",
+		"methods" : [
+			{ "name" : "<init>", "parameterTypes" : [] }
+		]
+	},
+	{
+		"name" : "net.pawet.pawgen.utils.AppConsoleHandler",
+		"methods" : [
+			{ "name" : "<init>", "parameterTypes" : [] }
+		]
+	}
 ]

@@ -46,7 +46,7 @@ public class PawgenFs implements AutoCloseable {
 
 	@SneakyThrows
 	public static PawgenFs tmpFs() {
-		Path tmp = createTempDirectory(Path.of("./build").toAbsolutePath().normalize(), "pawgen");
+		Path tmp = createTempDirectory(Path.of("build").toAbsolutePath().normalize(), "pawgen");
 		return new PawgenFs(tmp.getFileSystem(), tmp);
 	}
 
