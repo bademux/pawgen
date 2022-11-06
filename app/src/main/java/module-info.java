@@ -4,6 +4,8 @@ module pawgen {
 	exports net.pawet.pawgen.utils;
 
 	requires static lombok;
+	requires jdk.crypto.ec;
+	requires jdk.crypto.cryptoki;
 	requires java.xml;
 	requires jdk.zipfs;
 	requires com.github.mustachejava;
