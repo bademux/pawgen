@@ -1,3 +1,18 @@
+plugins {
+	id 'com.palantir.git-version' version '0.15.0'
+}
+
+private String getVersion(String prefix) {
+	try {
+		return versionDetails(prefix: prefix).with({ "${lastTag}.${commitDistance}-${gitHash}" }) as String
+	} catch (Exception e) {
+		logger.info("Jgit failed, trying git binary", e)
+		return'git describe --tags --always --first-parent'.execute().with({ exitValue() == 0 ? text - prefix : null })
+	}
+}
+
+rootProject.version = getVersion('v@') ?: version
+
 subprojects {
 	repositories {
 		mavenCentral()

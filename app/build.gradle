@@ -1,16 +1,14 @@
 plugins {
 	id 'application'
 	id 'groovy'
-	id 'com.palantir.git-version' version '0.15.0'
 	id 'org.gradlex.extra-java-module-info' version '1.1'
 	id 'org.gradlex.java-module-testing' version '1.0'
 	id 'org.graalvm.buildtools.native' version '0.9.16'
 }
 
-var details = versionDetails(prefix: 'v@')
-version "${details.lastTag}.${details.commitDistance}-${details.gitHash}" as String
-
 var generatedDir = file("$buildDir/generated/src/java")
+
+version rootProject.version
 
 task generateJava() {
 	outputs.dir generatedDir
@@ -187,18 +185,18 @@ task jlink(type: Exec, dependsOn: jar) {
 	var jdkPath = javaToolchains.compilerFor(java.toolchain).get().metadata.installationPath
 	workingDir buildDir
 	executable jdkPath.file('bin/jlink').asFile
-	args = [
-		'--module-path', (configurations.runtimeClasspath.files + jar.archiveFile.asFile.get()).join(':'),
+	argumentProviders << (CommandLineArgumentProvider) {[  // lazy arguments
+		'--module-path', (configurations.runtimeClasspath.files + jar.archiveFile.asFile.get()).join(System.getProperty('path.separator', ':')),
 		'--add-modules', application.mainModule.get(),
 		'--output', outputs.files.singleFile.absolutePath,
-		'--launcher', "run=${application.mainModule.get()}/${application.mainClass.get()}",
+		'--launcher', "run=${application.mainModule.get()}/${application.mainClass.get()}" as String,
 		'--compress', 2 as String, //zip
 		'--vm', 'server',
 		'--no-header-files', '--no-man-pages',
 		'--generate-cds-archive',
-		'--release-info', "add:APP_VERSION=$version",
+		'--release-info', "add:APP_VERSION=$version" as String,
 		'--vendor-bug-url', 'https://github.com/bademux/pawgen/issues',
-	]
+	]}
 
 	doFirst {
 		outputs.files.singleFile.deleteDir() // jlink expects the output directory to not exist when it runs
