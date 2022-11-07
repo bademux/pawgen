@@ -42,7 +42,7 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 			BufferedImage image = img.getValue();
 			String formatName = img.getKey();
 			if (isGreaterThanThumbnail(image.getWidth()) && hasThumbnailAttrs()) {
-				var attrs = processThumbnail(image);
+				var attrs = processThumbnail(image, formatName);
 				writeWatermarkedImage(image, formatName);
 				return attrs;
 			}
@@ -92,9 +92,10 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 		return attr;
 	}
 
-	private Map<String, String> processThumbnail(BufferedImage image) {
+	private Map<String, String> processThumbnail(BufferedImage image, String formatName) {
 		var thumbnailHeight = getThumbnailHeight(image.getWidth(), image.getHeight());
-		String srcBase64 = getAsBase64(resize(image, thumbnailWidth, thumbnailHeight), "jpg");
+		String targetFormat = image.getColorModel().hasAlpha() ? formatName : "jpg";
+		String srcBase64 = getAsBase64(resize(image, thumbnailWidth, thumbnailHeight), targetFormat);
 		return thumbnailAttributes(srcBase64, thumbnailWidth, thumbnailHeight);
 	}
 
