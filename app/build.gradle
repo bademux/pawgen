@@ -180,31 +180,35 @@ extraJavaModuleInfo {
 
 task jlink(type: Exec, dependsOn: jar) {
 	group 'distribution'
+	var launcherFileName = 'run'
 
 	outputs.dir project.file("$buildDir/jre")
 	var jdkPath = javaToolchains.compilerFor(java.toolchain).get().metadata.installationPath
 	workingDir buildDir
 	executable jdkPath.file('bin/jlink').asFile
-	argumentProviders << (CommandLineArgumentProvider) {[  // lazy arguments
-		'--module-path', (configurations.runtimeClasspath.files + jar.archiveFile.asFile.get()).join(System.getProperty('path.separator', ':')),
-		'--add-modules', application.mainModule.get(),
-		'--output', outputs.files.singleFile.absolutePath,
-		'--launcher', "run=${application.mainModule.get()}/${application.mainClass.get()}" as String,
-		'--compress', 2 as String, //zip
-		'--vm', 'server',
-		'--no-header-files', '--no-man-pages',
-		'--generate-cds-archive',
-		'--release-info', "add:APP_VERSION=$version" as String,
-		'--vendor-bug-url', 'https://github.com/bademux/pawgen/issues',
-	]}
+	argumentProviders << (CommandLineArgumentProvider) {
+		[  // lazy arguments
+		   '--module-path', (configurations.runtimeClasspath.files + jar.archiveFile.asFile.get()).join(System.getProperty('path.separator', ':')),
+		   '--add-modules', application.mainModule.get(),
+		   '--output', outputs.files.singleFile.absolutePath,
+		   '--launcher', launcherFileName + "=${application.mainModule.get()}/${application.mainClass.get()}" as String,
+		   '--compress', 2 as String, //zip
+		   '--vm', 'server',
+		   '--no-header-files', '--no-man-pages',
+		   '--generate-cds-archive',
+		   '--release-info', "add:APP_VERSION=$version" as String,
+		   '--vendor-bug-url', 'https://github.com/bademux/pawgen/issues',
+		]
+	}
 
 	doFirst {
 		outputs.files.singleFile.deleteDir() // jlink expects the output directory to not exist when it runs
 	}
 	doLast {
-		new File(outputs.files.singleFile, 'bin').listFiles({ it.name.startsWith('run') } as FileFilter).each {
-			def prefix = 'JLINK_VM_OPTIONS='
-			it.text = it.text.replace(prefix, """$prefix"${(run.jvmArgs + run.systemProperties.collect({ "-D$it.key=$it.value" })).join(' ')}" """)
+		var prefix = 'JLINK_VM_OPTIONS='
+		var opts = (run.jvmArgs + run.systemProperties.collect({ "-D$it.key=$it.value" })).join(' ')
+		new File(outputs.files.singleFile, 'bin').listFiles({ it.name.startsWith(launcherFileName) } as FileFilter).each {
+			it.text = it.text.replace(prefix, it.name.endsWith('.bat') ? "\"$prefix$opts\"" : "$prefix\"$opts\"")
 		}
 	}
 }
