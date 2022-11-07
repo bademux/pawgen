@@ -140,6 +140,7 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 
 	@SneakyThrows
 	private String getAsBase64(BufferedImage thumbnailImage, String formatName) {
+		formatName = "gif".equals(formatName) ? "png" : formatName; //force embed PNG for GIFs
 		var bos = new ByteArrayOutputStream(thumbnailImage.getWidth() * thumbnailImage.getHeight() * 3);
 		try (var os = BASE64_ENCODER.wrap(bos)) {
 			writeImage(thumbnailImage, formatName, os);
