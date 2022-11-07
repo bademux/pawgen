@@ -78,7 +78,7 @@ public final class ArticleResource implements ReadableResource {
 		if (titleLength > maxTitleLength) {
 			title = splitStringByByteLength(title, maxTitleLength);
 		}
-		return title;
+		return title.toLowerCase();
 	}
 
 	static String splitStringByByteLength(String src, int size) {

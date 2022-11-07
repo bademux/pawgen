@@ -82,16 +82,12 @@ public record ArticleParser(ResourceFactory resourceFactory) {
 		Category category = resource.getCategory();
 		var contentParser = new ContentParser((n, attrs) -> resourceFactory.createResource(n, category, attrs));
 		QName defQName = getWithPrefix(elementQName, attr.getName());
-		String title = getTitle(attr);
+		String title = ".".equals(attr.getValue()) ? "" : attr.getValue();
 		String lang = defQName.getPrefix().toLowerCase();
 		return Article.of(resource, () -> contentParser.read(resource.readable(), title),
 			type, lang, title,
 			getAuthor(startElement, defQName), getDate(startElement, defQName), getSource(startElement, defQName),
 			getFile(startElement, defQName));
-	}
-
-	static String getTitle(Attribute attr) {
-		return ".".equals(attr.getValue()) ? "" : attr.getValue();
 	}
 
 	static String getAuthor(StartElement startElement, QName qNameSample) {
