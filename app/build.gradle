@@ -2,7 +2,6 @@ plugins {
 	id 'application'
 	id 'groovy'
 	id 'org.gradlex.extra-java-module-info' version '1.1'
-	id 'org.gradlex.java-module-testing' version '1.0'
 	id 'org.graalvm.buildtools.native' version '0.9.16'
 }
 
@@ -30,6 +29,8 @@ compileJava {
 
 test {
 	jvmArgs += "--enable-preview"
+	useJUnitPlatform()
+	modularity.inferModulePath = false
 }
 
 java {
@@ -79,11 +80,14 @@ graalvmNative {
 }
 
 configurations {
+	testCompileClasspath {
+		attributes { attribute(Attribute.of('javaModule', Boolean), false) }
+	}
 	testRuntimeClasspath.exclude module: 'jai-imageio-core' // exclude loading image by mmap in tests
-}
+	testRuntimeClasspath {
+		attributes { attribute(Attribute.of('javaModule', Boolean), false) }
 
-test {
-	useJUnitPlatform()
+	}
 }
 
 task downloadLombok() {
