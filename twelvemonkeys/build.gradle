@@ -3,7 +3,7 @@ plugins {
 	id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
-version "$twelvemonkeysVersion-$jaiVersion"
+version twelvemonkeysVersion
 
 java {
 	toolchain {
@@ -17,12 +17,6 @@ dependencies {
 	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-jpeg'
 	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-webp'
 	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-tiff'
-	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-core'
-	implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-metadata'
-	implementation group: 'com.twelvemonkeys.common', name: 'common-image'
-	implementation group: 'com.twelvemonkeys.common', name: 'common-io'
-	implementation group: 'com.twelvemonkeys.common', name: 'common-lang'
-	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
 }
 
 shadowJar {

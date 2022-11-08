@@ -34,15 +34,15 @@ test {
 
 java {
 	toolchain {
-		languageVersion.set(JavaLanguageVersion.of(jdkVersion))
+		languageVersion = JavaLanguageVersion.of(jdkVersion)
 	}
 	modularity.inferModulePath = true
 }
 
 application {
-	applicationName 'pawgen'
-	mainClass.set('net.pawet.pawgen.Application')
-	mainModule.set('pawgen')
+	applicationName = 'pawgen'
+	mainClass = 'net.pawet.pawgen.Application'
+	mainModule = 'pawgen'
 }
 
 run {
@@ -66,33 +66,20 @@ graalvmNative {
 	binaries {
 		main {
 			// Main options
-			debug.set(true) // Determines if debug info should be generated, defaults to false
-			verbose.set(true) // Add verbose output, defaults to false
-			fallback.set(false) // Sets the fallback mode of native-image, defaults to false
-			quickBuild.set(false)
+			debug = true // Determines if debug info should be generated, defaults to false
+			verbose = true // Add verbose output, defaults to false
+			fallback = false // Sets the fallback mode of native-image, defaults to false
+			quickBuild = false
 			buildArgs '--install-exit-handlers', '--native-image-info', '--report-unsupported-elements-at-runtime', '--initialize-at-run-time=net.pawet.pawgen.LoggingConfig'
 			runtimeArgs '--help' // Passes '--help' to built image, during "nativeRun" task
 			// Development options
-			agent.enabled.set(false) // Enables the reflection agent. Can be also set on command line using '-Pagent'
+			agent.enabled = false // Enables the reflection agent. Can be also set on command line using '-Pagent'
 		}
 	}
 }
 
 configurations {
-	fatJar.extendsFrom implementation
 	testRuntimeClasspath.exclude module: 'jai-imageio-core' // exclude loading image by mmap in tests
-}
-
-task fatJar(type: Jar) {
-	group 'Build'
-	manifest.attributes tasks.jar.manifest.attributes
-	archiveBaseName.set("$project.name-full")
-	from(
-		{ configurations.fatJar.collect({ it.isDirectory() ? it : zipTree(it) }) },
-		{ it.excludes = ['*.md', 'module-info.class'] }
-	)
-	with jar
-	duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 test {
@@ -123,7 +110,8 @@ dependencies {
 	annotationProcessor files({ tasks.installLombok.outputs.files })
 //	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 //	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
-	implementation project(path: ':imageio', configuration: 'moduleJar')
+	implementation project(path: ':twelvemonkeys', configuration: 'moduleJar')
+	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
 	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
 	implementation group: 'jakarta.json', name: 'jakarta.json-api', version: jakartajsonVersion
 	implementation group: 'org.glassfish', name: 'jakarta.json', version: jakartajsonVersion, classifier: 'module'
@@ -140,31 +128,32 @@ dependencies {
 	testImplementation group: 'net.bytebuddy', name: 'byte-buddy', version: bytebuddyVersion
 	testImplementation group: 'org.objenesis', name: 'objenesis', version: objenesisVersion
 	testImplementation group: 'com.google.jimfs', name: 'jimfs', version: memoryfilesystemVersion
-	testImplementation group: 'com.github.tomakehurst', name: 'wiremock-jre8', version: wiremockVersion
+	testImplementation group: 'com.github.tomakehurst', name: 'wiremock-jre8-standalone', version: wiremockVersion
 }
 
 extraJavaModuleInfo {
-	failOnMissingModuleInfo.set(true)
+	failOnMissingModuleInfo = true
 	module('com.github.spullara.mustache.java:compiler', 'com.github.mustachejava') {
-		requires 'java.logging'
+		requiresStatic 'java.logging'
 
 		exports 'com.github.mustachejava'
 		exports 'com.github.mustachejava.reflect'
 		exports 'com.github.mustachejava.util'
 	}
 
-	module("imageio-$twelvemonkeysVersion-$jaiVersion-all.jar", 'imageio') {
+	module("twelvemonkeys-$twelvemonkeysVersion-all.jar", 'com.twelvemonkeys.imageio') {
 		requiresStatic 'java.desktop'
 
-		//imageio
 		exports 'com.twelvemonkeys.imageio.stream'
 		exports 'com.twelvemonkeys.imageio.color'
 		exports 'com.twelvemonkeys.imageio.plugins.jpeg'
 		exports 'com.twelvemonkeys.imageio.plugins.webp'
 		exports 'com.twelvemonkeys.imageio.plugins.tiff'
+	}
 
+	module('com.github.jai-imageio:jai-imageio-core', 'com.github.jai_imageio') {
+		requiresStatic 'java.desktop'
 
-		//jai
 		exports 'com.github.jaiimageio.impl.stream'
 		exports 'com.github.jaiimageio.impl.plugins.wbmp'
 		exports 'com.github.jaiimageio.impl.plugins.bmp'
@@ -173,6 +162,7 @@ extraJavaModuleInfo {
 		exports 'com.github.jaiimageio.impl.plugins.pnm'
 		exports 'com.github.jaiimageio.impl.plugins.raw'
 
+		//use from twelvemonkeys
 		ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageReaderSpi'
 		ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageWriterSpi'
 	}
