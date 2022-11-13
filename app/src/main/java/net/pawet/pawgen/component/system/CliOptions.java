@@ -134,7 +134,7 @@ public final class CliOptions {
 			.filter(not(String::isBlank))
 			.forEach(optionsBuilder::host);
 		propertyProvider.apply("netlify.enable")
-			.map("true"::equalsIgnoreCase)
+			.map(Boolean.TRUE.toString()::equalsIgnoreCase)
 			.ifPresent(optionsBuilder::netlifyEnabled);
 		propertyProvider.apply("netlify.url")
 			.map(URI::create)
@@ -144,7 +144,7 @@ public final class CliOptions {
 		propertyProvider.apply("netlify.siteAppId")
 			.ifPresent(optionsBuilder::siteId);
 		propertyProvider.apply("cleanupOutputDir")
-			.map("true"::equalsIgnoreCase)
+			.map(Boolean.FALSE.toString()::equalsIgnoreCase)
 			.ifPresent(optionsBuilder::cleanupOutputDir);
 
 	}
