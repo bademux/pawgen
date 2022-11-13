@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
+import net.pawet.pawgen.utils.StringBuilderWriter;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
@@ -116,7 +117,7 @@ record ArticleContentBody(QName rootTag,
 	}
 
 	@SneakyThrows
-	public void read(Appendable sb) {
+	public void read(StringBuilder sb) {
 		while (xmlr.hasNext()) {
 			XMLEvent event = xmlr.nextEvent();
 			if (event.isEndElement() && rootTag.equals(event.asEndElement().getName())) {
@@ -126,7 +127,7 @@ record ArticleContentBody(QName rootTag,
 		}
 	}
 
-	private void handleTag(Appendable sb, XMLEvent event) throws XMLStreamException, IOException {
+	private void handleTag(StringBuilder sb, XMLEvent event) throws XMLStreamException, IOException {
 		switch (event.getEventType()) {
 			case XMLStreamConstants.START_ELEMENT -> {
 				StartElement startElement = event.asStartElement();
@@ -159,21 +160,7 @@ record ArticleContentBody(QName rootTag,
 			case XMLStreamConstants.CHARACTERS -> {
 				Characters characters = event.asCharacters();
 				if (!characters.isIgnorableWhiteSpace()) {
-					characters.writeAsEncodedUnicode(new Writer() {
-						@SneakyThrows
-						@Override
-						public void write(char @NonNull [] cbuf, int off, int len) {
-							sb.append(CharBuffer.wrap(cbuf), off, len);
-						}
-
-						@Override
-						public void flush() {
-						}
-
-						@Override
-						public void close() {
-						}
-					});
+					characters.writeAsEncodedUnicode(new StringBuilderWriter(sb));
 				}
 			}
 		}
