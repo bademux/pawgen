@@ -2,10 +2,8 @@ package net.pawet.pawgen.component;
 
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.netlify.FileDigestData;
-import net.pawet.pawgen.component.render.ArticleHeaderQuery;
+import net.pawet.pawgen.component.render.ArticleQuery;
 import net.pawet.pawgen.component.render.Renderer;
 import net.pawet.pawgen.component.render.Templater;
 import net.pawet.pawgen.component.resource.ResourceFactory;
@@ -30,16 +28,15 @@ import static java.util.stream.Collectors.toUnmodifiableSet;
 @RequiredArgsConstructor
 public class Pawgen implements AutoCloseable {
 
-	private final Clock clock = Clock.systemUTC();
+	private final Clock clock;
 	private final ProcessingExecutorService processingExecutor;
-	private final ArticleHeaderQuery queryService;
+	private final ArticleQuery queryService;
 	private final Renderer renderer;
 	private final FileSystemRegistry fsRegistry;
 	private final Storage storage;
 	private final ResourceFactory resourceFactory;
-	private final boolean cleanupOutputDir;
 
-	public static Pawgen create(CliOptions opts) {
+	public static Pawgen create(Clock clock, CliOptions opts) {
 		var fsRegistry = new FileSystemRegistry();
 		var staticDirs = opts.getStaticUris().stream()
 			.flatMap(fsRegistry::parseCopyDir)
@@ -52,9 +49,9 @@ public class Pawgen implements AutoCloseable {
 		var processingExecutor = new ProcessingExecutorService();
 		var resourceFactory = new ResourceFactory(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()), processingExecutor);
-		var queryService = new ArticleHeaderQuery(storage, new ArticleParser(resourceFactory));
-		var renderer = Renderer.of(templater, queryService, processingExecutor);
-		return new Pawgen(processingExecutor, queryService, renderer, fsRegistry, storage, resourceFactory, opts.isCleanupOutputDir());
+		var queryService = new ArticleQuery(storage, new ArticleParser(resourceFactory));
+		var renderer = Renderer.of(templater, clock, queryService, processingExecutor);
+		return new Pawgen(clock, processingExecutor, queryService, renderer, fsRegistry, storage, resourceFactory);
 	}
 
 	public Stream<DigestAwareResource> readOutputDir() {
@@ -66,10 +63,8 @@ public class Pawgen implements AutoCloseable {
 	}
 
 	public void cleanupOutputDirInternal() {
-		if (cleanupOutputDir) {
-			log.debug("Cleaning output dir");
-			storage.cleanupOutputDir();
-		}
+		log.debug("Cleaning output dir");
+		storage.cleanupOutputDir();
 	}
 
 	private void copyFiles() {
@@ -86,7 +81,7 @@ public class Pawgen implements AutoCloseable {
 	public void renderInternal() {
 		processingExecutor.execute(this::copyFiles);
 		log.info("Finding articles to be processed.");
-		try (var headers = queryService.get(Category.ROOT)) {
+		try (var headers = queryService.getArticles(Category.ROOT)) {
 			headers.map(renderer::create).forEach(Renderer.ArticleContext::render);
 		}
 		processingExecutor.waitAllExecuted();

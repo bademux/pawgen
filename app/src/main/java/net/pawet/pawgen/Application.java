@@ -30,7 +30,7 @@ public class Application {
 		long start = CLOCK.millis();
 		var config = CliOptions.parse(args);
 		log.info("Executed with config: {}", config);
-		try (var app = setupShutdownHook(Pawgen.create(config))) {
+		try (var app = setupShutdownHook(Pawgen.create(CLOCK, config))) {
 			var cleanupIn = app.cleanupOutputDir();
 			var renderIn = app.render();
 			long startDeploy = CLOCK.millis();

@@ -9,12 +9,15 @@ import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
 
 import java.nio.file.FileAlreadyExistsException;
+import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
+import static java.time.ZoneOffset.UTC;
+import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.*;
 import static lombok.AccessLevel.PRIVATE;
@@ -25,7 +28,8 @@ public class Renderer {
 
 	private final Set<Article> processedFiles = ConcurrentHashMap.newKeySet();
 	private final Templater templater;
-	private final ArticleHeaderQuery queryService;
+	private final Clock clock;
+	private final ArticleQuery queryService;
 	private final Executor executor;
 
 	public ArticleContext create(Article header) {
@@ -33,8 +37,8 @@ public class Renderer {
 	}
 
 	void render(ArticleContext context) {
-		try (var writer = context.header.writer()) {
-			templater.render(writer, context, context.header.readContent());
+		try (var writer = context.article.writer()) {
+			templater.render(writer, context, context.article.readContent());
 			log.debug("Rendering: {}", context);
 		} catch (FileAlreadyExistsException e) {
 			log.debug("Error while generating article {}.", context, e);
@@ -49,98 +53,118 @@ public class Renderer {
 
 		@ToString.Include
 		@Getter
-		private final Article header;
+		private final Article article;
 
 		@Synchronized
 		public void render() {
 			if (isLegacy()) {
-				log.debug("legacy article, skipping {}", header);
+				log.debug("legacy article, skipping {}", article);
 				return;
 			}
-			if (processedFiles.contains(header)) {
-				log.trace("Already processed, skipping {}", header);
+			if (processedFiles.contains(article)) {
+				log.trace("Already processed, skipping {}", article);
 				return;
 			}
 			executor.execute(() -> Renderer.this.render(this));
-			processedFiles.add(header);
+			processedFiles.add(article);
 		}
 
 		Iterator<ArticleContext> getOtherLangArticle() {
-			return queryService.get(header.getCategory()).filter(not(header::isSameLang)).map(Renderer.this::create).peek(ArticleContext::render).iterator();
+			return queryService.getArticles(article.getCategory())
+				.filter(not(article::isSameLang))
+				.map(Renderer.this::create)
+				.peek(ArticleContext::render)
+				.iterator();
 
 		}
 
 		Iterator<ArticleContext> getChildren() {
-			return queryService.getChildren(header.getCategory()).map(Renderer.this::create).peek(ArticleContext::render).collect(groupingBy(ArticleContext::getCategory, TreeMap::new, toList())).values().stream().map(this::chooseTheBestSuitableLang).flatMap(Optional::stream).iterator();
+			return queryService.getChildren(article.getCategory())
+				.map(Renderer.this::create)
+				.peek(ArticleContext::render)
+				.collect(groupingBy(ArticleContext::getCategory, LinkedHashMap::new, toList()))
+				.values().stream()
+				.map(this::chooseTheBestSuitableLang)
+				.flatMap(Optional::stream)
+				.iterator();
+		}
+
+		Iterator<ArticleContext> getLatest() {
+			return queryService.getLast(article.getCategory(), clock.instant().atZone(UTC), 10)
+				.map(Renderer.this::create)
+				.peek(ArticleContext::render)
+				.collect(groupingBy(ArticleContext::getCategory, LinkedHashMap::new, toList()))
+				.values().stream()
+				.map(this::chooseTheBestSuitableLang)
+				.flatMap(Optional::stream)
+				.limit(6)
+				.iterator();
 		}
 
 		Optional<ArticleContext> getParent() {
-			var parentCategory = header.getCategory().getParent();
-			if (parentCategory == null) {
-				return Optional.empty();
-			}
-			return queryService.get(parentCategory).map(Renderer.this::create).peek(ArticleContext::render).collect(collectingAndThen(toList(), this::chooseTheBestSuitableLang));
+			return queryService.getParents(article.getCategory())
+				.map(Renderer.this::create)
+				.peek(ArticleContext::render)
+				.collect(collectingAndThen(toList(), this::chooseTheBestSuitableLang));
 		}
 
 		String relativize(String value) {
-			return header.relativize(value);
+			return article.relativize(value);
 		}
 
 		String getUrl() {
-			return header.getUrl();
+			return article.getUrl();
 		}
 
 		String getAuthor() {
-			return header.getAuthor();
+			return article.getAuthor();
 		}
 
 		Category getCategory() {
-			return header.getCategory();
+			return article.getCategory();
 		}
 
 		ZonedDateTime getDate() {
-			return header.getDate();
+			return article.getDate();
 		}
 
 		String getFile() {
-			return header.getAttachmentUri();
+			return article.getAttachmentUri();
 		}
 
 		String getFileExt() {
-			return header.getAttachmentType();
+			return article.getAttachmentType();
 		}
 
 		String getLang() {
-			return header.getLang();
+			return article.getLang();
 		}
 
 		String getSource() {
-			return header.getSource();
+			return article.getSource();
 		}
 
 		String getTitle() {
-			return header.getTitle();
+			return article.getTitle();
 		}
 
 		String getType() {
-			return header.getType();
+			return article.getType();
 		}
 
 		boolean isLegacy() {
-			var title = header.getTitle();
-			var category = header.getCategory();
+			var title = article.getTitle();
+			var category = article.getCategory();
 			return title.isBlank() || ".".equals(title) || category.endsWith("_space") || category.endsWith("_aspace");
 		}
 
 		private Optional<ArticleContext> chooseTheBestSuitableLang(List<ArticleContext> articleHeaders) {
-			if (articleHeaders.size() == 0) {
-				return Optional.empty();
+			if (articleHeaders.size() < 2) {
+				return articleHeaders.stream().findAny();
 			}
-			if (articleHeaders.size() == 1) {
-				return Optional.of(articleHeaders.get(0));
-			}
+
 			var articleByLang = articleHeaders.stream().collect(toMap(ArticleContext::getLang, Function.identity()));
-			var ah = articleByLang.get(header.getLang());
+			var ah = articleByLang.get(article.getLang());
 			if (ah != null) {
 				return Optional.of(ah);
 			}

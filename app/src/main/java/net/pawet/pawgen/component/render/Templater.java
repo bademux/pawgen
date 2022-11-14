@@ -107,6 +107,7 @@ public class Templater {
 				case "children" -> context.getChildren();
 				case "hasChildren" -> context.getChildren().hasNext();
 				case "otherLangArticle" -> context.getOtherLangArticle();
+				case "latest" -> context.getLatest();
 				default -> null;
 			};
 		}

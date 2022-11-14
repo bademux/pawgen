@@ -1,5 +1,6 @@
 package net.pawet.pawgen.component.xml;
 
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
@@ -27,9 +28,12 @@ import static java.util.stream.StreamSupport.stream;
 import static net.pawet.pawgen.component.xml.XmlUtils.getWithPrefix;
 
 @Slf4j
-public record ArticleParser(ResourceFactory resourceFactory) {
+@RequiredArgsConstructor
+public final class ArticleParser {
 
 	public static final Set<String> ROOT_TAG_NAMES = Set.of("article", "gallery");
+
+	private final ResourceFactory resourceFactory;
 
 	@SneakyThrows
 	public Stream<Article> parse(ArticleResource readable) {
