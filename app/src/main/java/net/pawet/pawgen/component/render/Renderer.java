@@ -173,5 +173,5 @@ public class Renderer {
 
 	}
 
-	private static final List<String> SUPPORTED_LANGS = List.of("by", "en", "pl", "ru");
+	private static final List<String> SUPPORTED_LANGS = List.of("by", "pl", "ru", "en");
 }
