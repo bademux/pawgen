@@ -103,6 +103,7 @@ public class Templater {
 				case "source" -> context.getSource();
 				case "title" -> context.getTitle();
 				case "type" -> context.getType();
+				case "aliases" -> context.getAliases();
 				case "url" -> context.getUrl();
 				case "children" -> context.getChildren();
 				case "hasChildren" -> context.getChildren().hasNext();

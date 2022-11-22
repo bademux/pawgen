@@ -12,12 +12,13 @@ import java.nio.file.FileAlreadyExistsException;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.time.ZoneOffset.UTC;
-import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.*;
 import static lombok.AccessLevel.PRIVATE;
@@ -47,6 +48,12 @@ public class Renderer {
 		}
 	}
 
+	public Stream<Entry<String, String>> getAliases() {
+		return processedFiles.stream()
+			.flatMap(article -> article.getAliases().map(alias -> Map.entry(alias, article.getUrl())))
+			.distinct();
+	}
+
 	@ToString(onlyExplicitlyIncluded = true)
 	@RequiredArgsConstructor(access = PRIVATE)
 	public final class ArticleContext {
@@ -61,6 +68,7 @@ public class Renderer {
 				log.debug("legacy article, skipping {}", article);
 				return;
 			}
+			log.trace("Rendering {}", article);
 			if (processedFiles.contains(article)) {
 				log.trace("Already processed, skipping {}", article);
 				return;
@@ -82,21 +90,13 @@ public class Renderer {
 			return queryService.getChildren(article.getCategory())
 				.map(Renderer.this::create)
 				.peek(ArticleContext::render)
-				.collect(groupingBy(ArticleContext::getCategory, LinkedHashMap::new, toList()))
-				.values().stream()
-				.map(this::chooseTheBestSuitableLang)
-				.flatMap(Optional::stream)
 				.iterator();
 		}
 
 		Iterator<ArticleContext> getLatest() {
-			return queryService.getLast(article.getCategory(), clock.instant().atZone(UTC), 10)
+			return queryService.getLast(article.getCategory(), clock.instant().atZone(UTC), 6)
 				.map(Renderer.this::create)
 				.peek(ArticleContext::render)
-				.collect(groupingBy(ArticleContext::getCategory, LinkedHashMap::new, toList()))
-				.values().stream()
-				.map(this::chooseTheBestSuitableLang)
-				.flatMap(Optional::stream)
 				.limit(6)
 				.iterator();
 		}
@@ -150,6 +150,10 @@ public class Renderer {
 
 		String getType() {
 			return article.getType();
+		}
+
+		Iterator<String> getAliases() {
+			return article.getAliases().iterator();
 		}
 
 		boolean isLegacy() {

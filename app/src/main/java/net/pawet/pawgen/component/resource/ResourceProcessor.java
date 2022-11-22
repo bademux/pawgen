@@ -2,6 +2,7 @@ package net.pawet.pawgen.component.resource;
 
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
@@ -18,12 +19,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.LongAccumulator;
+import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 @Slf4j
 @RequiredArgsConstructor
-public final class ResourceFactory {
+public final class ResourceProcessor implements Function<ResourceProcessor.ProcessingItem, Map<String, String>> {
 	private final LongAccumulator imgProcessingCounter = new LongAccumulator(Long::sum, 0);
 	private final LongAccumulator resProcessingCounter = new LongAccumulator(Long::sum, 0);
 	private final Clock clock = Clock.systemUTC();
@@ -32,19 +34,24 @@ public final class ResourceFactory {
 	private final ProcessableImageFactory processableImageFactory;
 	private final Set<String> hosts;
 
-	@SneakyThrows
-	public Map<String, String> createResource(String tagName, Category category, Map<String, String> attributes) {
-		try {
-			return create(tagName, category, attributes)
-				.map(ResourceFactory::safeProcess)
-				.orElse(attributes);
-		} catch (Exception e) {
-			log.warn("Error while processing tag '{}' in '{}'", tagName, category);
-		}
-		return attributes;
+
+	public record ProcessingItem(String tagName, Category category, @Delegate Map<String, String> attributes) implements Map<String, String> {
 	}
 
-	private static Map<String, String> safeProcess(Supplier<Map<String, String>> resource) {
+	@SneakyThrows
+	@Override
+	public Map<String, String> apply(ProcessingItem processingItem) {
+		try {
+			return create(processingItem.tagName, processingItem.category, processingItem)
+				.map(ResourceProcessor::safeApply)
+				.orElse(processingItem);
+		} catch (Exception e) {
+			log.warn("Error while processing tag '{}' in '{}'", processingItem.tagName, processingItem.category);
+		}
+		return processingItem;
+	}
+
+	private static Map<String, String> safeApply(Supplier<Map<String, String>> resource) {
 		try {
 			return resource.get();
 		} catch (Exception e) {

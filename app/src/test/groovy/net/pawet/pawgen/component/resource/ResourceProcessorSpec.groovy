@@ -5,11 +5,11 @@ import spock.lang.Specification
 
 import java.lang.Void as Should
 
-class ResourceFactorySpec extends Specification {
+class ResourceProcessorSpec extends Specification {
 
 	Should "create handle link"() {
 		given:
-		def factory = new ResourceFactory(null, null, ['localhost'] as Set)
+		def factory = new ResourceProcessor(null, null, ['localhost'] as Set)
 		when:
 		def result = factory.handleLink(url)
 		then:

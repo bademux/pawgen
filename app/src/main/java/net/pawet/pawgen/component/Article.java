@@ -11,7 +11,11 @@ import java.net.URISyntaxException;
 import java.nio.channels.Channels;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static lombok.AccessLevel.PRIVATE;
@@ -43,18 +47,26 @@ public final class Article implements Comparable<Article> {
 	@NonNull
 	private final String title;
 	@Getter
+	@ToString.Include
+	@EqualsAndHashCode.Include
 	private final String author;
+	@ToString.Include
+	@EqualsAndHashCode.Include
 	private final ZonedDateTime date;
 	@Getter
+	@ToString.Include
+	@EqualsAndHashCode.Include
 	private final String source;
 	@Getter(value = PRIVATE, lazy = true)
 	private final AttachmentResource attachment = initAttachment();
+	@Getter
 	@ToString.Include
 	@EqualsAndHashCode.Include
 	private final String file;
+	private final Collection<String> aliases;
 
-	public static Article of(ArticleResource resource, Supplier<CharSequence> contentSupplier, String type, String lang, String title, String author, ZonedDateTime date, String source, String file) {
-		return new Article(resource, contentSupplier, type, lang, title, author, date, source, file);
+	public static Article of(ArticleResource resource, Supplier<CharSequence> contentSupplier, String type, String lang, String title, String author, ZonedDateTime date, String source, String file, Collection<String> aliases) {
+		return new Article(resource, contentSupplier, type, lang, title, author, date, source, file, aliases);
 	}
 
 	public Category getCategory(){
@@ -142,4 +154,9 @@ public final class Article implements Comparable<Article> {
 	public String getUrl() {
 		return resource.urlFor(title);
 	}
+
+	public Stream<String> getAliases() {
+		return aliases.stream();
+	}
+
 }

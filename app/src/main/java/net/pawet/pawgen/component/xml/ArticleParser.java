@@ -5,105 +5,113 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
-import net.pawet.pawgen.component.resource.ResourceFactory;
+import net.pawet.pawgen.component.resource.ResourceProcessor.ProcessingItem;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
 
-import javax.xml.namespace.QName;
-import javax.xml.stream.XMLEventReader;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.StartElement;
-import javax.xml.stream.events.XMLEvent;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.stream.Stream;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 
-import static java.util.Spliterator.*;
-import static java.util.Spliterators.spliteratorUnknownSize;
+import static java.util.function.Predicate.not;
 import static java.util.stream.StreamSupport.stream;
-import static net.pawet.pawgen.component.xml.XmlUtils.getWithPrefix;
 
 @Slf4j
 @RequiredArgsConstructor
 public final class ArticleParser {
 
-	public static final Set<String> ROOT_TAG_NAMES = Set.of("article", "gallery");
-
-	private final ResourceFactory resourceFactory;
+	private final Function<ProcessingItem, Map<String, String>> resourceFactory;
 
 	@SneakyThrows
-	public Stream<Article> parse(ArticleResource readable) {
+	public Article parse(ArticleResource readable) {
 		var category = readable.getCategory();
-		try {
-			var xmlr = PawXMLEventReader.of(readable.readable());
-			log.info("Parsing category '{}'", category);
-			return xmlEventStream(xmlr)
-				.flatMap(xmlEvent -> parse(xmlEvent, readable))
-				.onClose(xmlr::close);
-		} catch (Exception e) {
-			log.error("Can't parse article in '{}', skipping", category, e);
-			return Stream.empty();
+		log.info("Parsing category '{}'", category);
+		try (var xmlEventStream = PawXMLEventReader.of(readable.readable())) {
+			return parse(getRootElement(xmlEventStream), readable);
 		}
 	}
 
-	private Stream<XMLEvent> xmlEventStream(XMLEventReader xmlr) {
-		var iterator = new Iterator<XMLEvent>() {
-			@Override
-			public boolean hasNext() {
-				return xmlr.hasNext();
+	private static StartElement getRootElement(PawXMLEventReader xmlEventStream) throws XMLStreamException {
+		while (xmlEventStream.hasNext()) {
+			var event = xmlEventStream.nextEvent();
+			if (!event.isStartElement()) {
+				continue;
 			}
-
-			@SneakyThrows
-			@Override
-			public XMLEvent next() {
-				return xmlr.nextEvent();
+			var startElement = event.asStartElement();
+			if ("body".contains(startElement.getName().getLocalPart())) {
+				return startElement;
 			}
-		};
-
-		return stream(spliteratorUnknownSize(iterator, ORDERED | IMMUTABLE | NONNULL), false);
+		}
+		throw new IllegalStateException("Can't find root element; last event: " + xmlEventStream);
 	}
 
-	private Stream<Article> parse(XMLEvent event, ArticleResource resource) {
-		if (!event.isStartElement()) {
-			return Stream.empty();
-		}
-		StartElement startElement = event.asStartElement();
-		QName elementQName = startElement.getName();
-		String type = elementQName.getLocalPart();
-		if (!ROOT_TAG_NAMES.contains(type)) {
-			return Stream.empty();
-		}
-		return stream(spliteratorUnknownSize(startElement.getAttributes(), ORDERED | IMMUTABLE | NONNULL), false)
-			.filter(attr -> "title".equalsIgnoreCase(attr.getName().getLocalPart()))
-			.map(attr -> parse(resource, startElement, elementQName, type, attr));
-	}
-
-	private Article parse(ArticleResource resource, StartElement startElement, QName elementQName, String type, Attribute attr) {
+	private Article parse(StartElement startElement, ArticleResource resource) {
+		var attrs = stream(((Iterable<Attribute>) startElement::getAttributes).spliterator(), false).toList();
+		String lang = resource.getLanguage();
+		var title = attrs.stream()
+			.filter(attr1 -> "title".equalsIgnoreCase(attr1.getName().getLocalPart()))
+			.findFirst()
+			.map(Attribute::getValue)
+			.map(s -> ".".equals(s) ? "" : s)
+			.orElseThrow();
+		var aliases = attrs.stream()
+			.filter(attr1 -> "alias".equalsIgnoreCase(attr1.getName().getLocalPart()))
+			.map(Attribute::getValue)
+			.filter(Objects::nonNull)
+			.filter(not(String::isBlank))
+			.distinct()
+			.toList();
+		String author = attrs.stream()
+			.filter(attr1 -> "author".equalsIgnoreCase(attr1.getName().getLocalPart()))
+			.findFirst()
+			.map(Attribute::getValue)
+			.filter(not(String::isBlank))
+			.orElse(null);
+		String source = attrs.stream()
+			.filter(attr1 -> "source".equalsIgnoreCase(attr1.getName().getLocalPart()))
+			.findFirst()
+			.map(Attribute::getValue)
+			.filter(not(String::isBlank))
+			.orElse(null);
+		ZonedDateTime date = attrs.stream()
+			.filter(attr1 -> "date".equalsIgnoreCase(attr1.getName().getLocalPart()))
+			.findFirst()
+			.map(Attribute::getValue)
+			.filter(not(String::isBlank))
+			.map(ArticleParser::parseDate)
+			.orElse(null);
+		String file =attrs.stream()
+			.filter(attr1 -> "file".equalsIgnoreCase(attr1.getName().getLocalPart()))
+			.findFirst()
+			.map(Attribute::getValue)
+			.filter(not(String::isBlank))
+			.orElse(null);
+		String type = attrs.stream()
+			.filter(attr1 -> "type".equalsIgnoreCase(attr1.getName().getLocalPart()))
+			.findFirst()
+			.map(Attribute::getValue)
+			.filter(not(String::isBlank))
+			.orElse("article");
 		Category category = resource.getCategory();
-		var contentParser = new ContentParser((n, attrs) -> resourceFactory.createResource(n, category, attrs));
-		QName defQName = getWithPrefix(elementQName, attr.getName());
-		String title = ".".equals(attr.getValue()) ? "" : attr.getValue();
-		String lang = defQName.getPrefix().toLowerCase();
-		return Article.of(resource, () -> contentParser.read(resource.readable(), title),
+		var contentParser = new ContentParser((n, attrs1) -> resourceFactory.apply(new ProcessingItem(n, category, attrs1)));
+		return Article.of(resource, () -> contentParser.read(resource.readable()),
 			type, lang, title,
-			getAuthor(startElement, defQName), getDate(startElement, defQName), getSource(startElement, defQName),
-			getFile(startElement, defQName));
+			author, date, source,
+			file,
+			aliases
+		);
 	}
 
-	static String getAuthor(StartElement startElement, QName qNameSample) {
-		return getTagValueOrDefault(startElement, qNameSample.getNamespaceURI(), "author", qNameSample.getPrefix());
-	}
-
-	static ZonedDateTime getDate(StartElement startElement, QName qNameSample) {
-		return parseDate(getTagValueOrDefault(startElement, qNameSample.getNamespaceURI(), "date", qNameSample.getPrefix()));
-	}
-
+	///2018-04-22T07:13:30Z
 	private static final DateTimeFormatter DATE_FORMATTER = new DateTimeFormatterBuilder()
-		.appendPattern("[dd-MM-yyyy][yyyy-MM-dd][dd.MM.yyyy][yyyy.MM.dd]['T'][ ][HH:mm][X]")
+		.appendPattern("[dd-MM-yyyy][yyyy-MM-dd][dd.MM.yyyy][yyyy.MM.dd]['T'][ ][HH:mm:ss][HH:mm][X]")
 		.parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
 		.parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
 		.toFormatter()
@@ -116,27 +124,6 @@ public final class ArticleParser {
 			} catch (Exception e) {
 				log.error("Can't parse date '{}'", date, e);
 			}
-		}
-		return null;
-	}
-
-	static String getSource(StartElement startElement, QName qNameSample) {
-		return getTagValueOrDefault(startElement, qNameSample.getNamespaceURI(), "source", qNameSample.getPrefix());
-	}
-
-	static String getFile(StartElement startElement, QName qNameSample) {
-		String file = getTagValueOrDefault(startElement, qNameSample.getNamespaceURI(), "file", qNameSample.getPrefix());
-		return file == null || file.isBlank() ? null : "/files/" + file;
-	}
-
-	static String getTagValueOrDefault(StartElement startElement, String namespaceURI, String localPart, String prefix) {
-		var attribute = startElement.getAttributeByName(new QName(namespaceURI, localPart, prefix));
-		if (attribute != null) {
-			return attribute.getValue();
-		}
-		attribute = startElement.getAttributeByName(new QName(localPart));
-		if (attribute != null) {
-			return attribute.getValue();
 		}
 		return null;
 	}

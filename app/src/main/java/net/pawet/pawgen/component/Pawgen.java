@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.render.ArticleQuery;
 import net.pawet.pawgen.component.render.Renderer;
 import net.pawet.pawgen.component.render.Templater;
-import net.pawet.pawgen.component.resource.ResourceFactory;
+import net.pawet.pawgen.component.resource.ResourceProcessor;
 import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
 import net.pawet.pawgen.component.resource.img.WatermarkFilterFactory;
 import net.pawet.pawgen.component.system.CliOptions;
@@ -22,8 +22,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toUnmodifiableSet;
-
 @Slf4j
 @RequiredArgsConstructor
 public class Pawgen implements AutoCloseable {
@@ -34,20 +32,20 @@ public class Pawgen implements AutoCloseable {
 	private final Renderer renderer;
 	private final FileSystemRegistry fsRegistry;
 	private final Storage storage;
-	private final ResourceFactory resourceFactory;
+	private final ResourceProcessor resourceProcessor;
 
 	public static Pawgen create(Clock clock, CliOptions opts) {
 		var fsRegistry = new FileSystemRegistry();
-		var staticDirs = opts.getStaticUris().stream()
-			.flatMap(fsRegistry::parseCopyDir)
-			.collect(toUnmodifiableSet());
-		Path contentDir = fsRegistry.getPathFsRegistration(opts.getContentUri());
-		Path outputDir = fsRegistry.getPathFsRegistration(opts.getOutputUri());
-		var storage = Storage.create(staticDirs, contentDir, outputDir);
-		var watermarkFilter = new WatermarkFilterFactory(fsRegistry).create(opts.getWatermarkText(), opts.getWatermarkUri());
+		var storage = Storage.create(
+			opts.getStaticUris().stream().flatMap(fsRegistry::parseCopyDir),
+			fsRegistry.getPathFsRegistration(opts.getContentUri()),
+			fsRegistry.getPathFsRegistration(opts.getOutputUri())
+		);
+		var watermarkFilter = new WatermarkFilterFactory(fsRegistry::getPathFsRegistration)
+			.create(opts.getWatermarkText(), opts.getWatermarkUri());
 		var imageFactory = ProcessableImageFactory.of(watermarkFilter, 250);
 		var processingExecutor = new ProcessingExecutorService();
-		var resourceFactory = new ResourceFactory(storage, imageFactory, opts.getHosts());
+		var resourceFactory = new ResourceProcessor(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()), processingExecutor);
 		var queryService = new ArticleQuery(storage, new ArticleParser(resourceFactory));
 		var renderer = Renderer.of(templater, clock, queryService, processingExecutor);
@@ -68,7 +66,7 @@ public class Pawgen implements AutoCloseable {
 	}
 
 	private void copyFiles() {
-		try (var files = storage.copyFiles()) {
+		try (var files = storage.staticFiles()) {
 			files.forEach(Resource::transfer);
 		}
 	}
@@ -82,18 +80,20 @@ public class Pawgen implements AutoCloseable {
 		processingExecutor.execute(this::copyFiles);
 		log.info("Finding articles to be processed.");
 		try (var headers = queryService.getArticles(Category.ROOT)) {
-			headers.map(renderer::create).forEach(Renderer.ArticleContext::render);
+			headers.map(renderer::create)
+				.forEach(Renderer.ArticleContext::render);
 		}
 		processingExecutor.waitAllExecuted();
 		assert storage.assertChecksums() : "Some checksum are inconsistent";
+		storage.writeAliases(renderer.getAliases().toList());
 	}
 
 	public Duration getImageProcessingTime() {
-		return resourceFactory.getImageProcessingTime();
+		return resourceProcessor.getImageProcessingTime();
 	}
 
 	public Duration getCopyResourcesTime() {
-		return resourceFactory.getResourceProcessingTime();
+		return resourceProcessor.getResourceProcessingTime();
 	}
 
 	@Override

@@ -1,6 +1,5 @@
 package net.pawet.pawgen.component.xml;
 
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.Delegate;
@@ -15,31 +14,28 @@ import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
-import java.io.IOException;
-import java.io.Writer;
-import java.nio.CharBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toMap;
-import static net.pawet.pawgen.component.xml.ContentParser.ROOT_TAG_NAMES;
-import static net.pawet.pawgen.component.xml.XmlUtils.getWithPrefix;
+import static java.util.stream.StreamSupport.stream;
 
 @Slf4j
-record ContentParser(BiFunction<String, Map<String, String>, Map<String, String>> handleResource) {
+@RequiredArgsConstructor
+public final class ContentParser {
 
-	public static final Set<String> ROOT_TAG_NAMES = Set.of("article", "gallery");
+	private final BiFunction<String, Map<String, String>, Map<String, String>> handleResource;
 
 	@SneakyThrows
-	public CharSequence read(ReadableByteChannel in, String title) {
-		try (var xmlReader = XmlReader.of(handleResource, in, title)) {
+	public CharSequence read(ReadableByteChannel in) {
+		try (var xmlReader = XmlReader.of(handleResource, in)) {
 			return xmlReader.read();
 		}
 	}
@@ -52,13 +48,12 @@ class XmlReader implements AutoCloseable {
 	private final ArticleContentBody body;
 
 	@SneakyThrows
-	public static XmlReader of(BiFunction<String, Map<String, String>, Map<String, String>> handleResource, ReadableByteChannel is, String title) {
-		var body = findBody(handleResource, PawXMLEventReader.of(is), title);
+	public static XmlReader of(BiFunction<String, Map<String, String>, Map<String, String>> handleResource, ReadableByteChannel is) {
+		var body = findBody(handleResource, PawXMLEventReader.of(is));
 		return new XmlReader(body);
 	}
 
-	public static ArticleContentBody findBody(BiFunction<String, Map<String, String>, Map<String, String>> handleResource,
-											  XMLEventReader xmlr, String title) throws XMLStreamException {
+	public static ArticleContentBody findBody(BiFunction<String, Map<String, String>, Map<String, String>> handleResource, XMLEventReader xmlr) throws XMLStreamException {
 		while (xmlr.hasNext()) {
 			XMLEvent event = xmlr.nextEvent();
 			if (!event.isStartElement()) {
@@ -66,25 +61,24 @@ class XmlReader implements AutoCloseable {
 			}
 			StartElement startElement = event.asStartElement();
 			QName articleQName = startElement.getName();
-			if (!ROOT_TAG_NAMES.contains(articleQName.getLocalPart())) {
+			if (!"body".contains(articleQName.getLocalPart())) {
 				continue;
 			}
 			Iterator<Attribute> attrsIt = startElement.getAttributes();
-			QName titleAttrName = getTitleAttrName(attrsIt, title);
+			QName titleAttrName = getTitleAttrName(attrsIt);
 			if (titleAttrName == null) {
 				continue;
 			}
-			String lang = getWithPrefix(articleQName, titleAttrName).getPrefix();
-			return ArticleContentBody.of(articleQName, lang, xmlr, handleResource);
+			return ArticleContentBody.of(articleQName, xmlr, handleResource);
 		}
-		throw new IllegalArgumentException("No article named: '" + title + "' found");
+		throw new IllegalArgumentException("No article with attribute title found found");
 	}
 
-	private static QName getTitleAttrName(Iterator<Attribute> attrsIt, String title) {
+	private static QName getTitleAttrName(Iterator<Attribute> attrsIt) {
 		while (attrsIt.hasNext()) {
 			Attribute attr = attrsIt.next();
 			QName name = attr.getName();
-			if ("title".equalsIgnoreCase(name.getLocalPart()) && title.equals(attr.getValue())) {
+			if ("title".equalsIgnoreCase(name.getLocalPart())) {
 				return name;
 			}
 		}
@@ -110,10 +104,8 @@ record ArticleContentBody(QName rootTag,
 						  @Delegate(types = AutoCloseable.class) XMLEventReader xmlr,
 						  BiFunction<String, Map<String, String>, Map<String, String>> handleResource) implements AutoCloseable {
 
-	public static ArticleContentBody of(QName rootTag, String lang, XMLEventReader xmlr, BiFunction<String, Map<String, String>, Map<String, String>> handleResource) {
-		var filter = new PawFilter(lang);
-		var xmlFilteredReader = XmlUtils.createFilteredReader(xmlr, filter);
-		return new ArticleContentBody(rootTag, filter::filterAttributes, xmlFilteredReader, handleResource);
+	public static ArticleContentBody of(QName rootTag, XMLEventReader xmlr, BiFunction<String, Map<String, String>, Map<String, String>> handleResource) {
+		return new ArticleContentBody(rootTag, itr -> stream(spliteratorUnknownSize(itr, 0), false), xmlr, handleResource);
 	}
 
 	@SneakyThrows
@@ -127,7 +119,7 @@ record ArticleContentBody(QName rootTag,
 		}
 	}
 
-	private void handleTag(StringBuilder sb, XMLEvent event) throws XMLStreamException, IOException {
+	private void handleTag(StringBuilder sb, XMLEvent event) throws XMLStreamException {
 		switch (event.getEventType()) {
 			case XMLStreamConstants.START_ELEMENT -> {
 				StartElement startElement = event.asStartElement();

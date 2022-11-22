@@ -64,26 +64,35 @@ public class FileSystemRegistry implements AutoCloseable {
 			.map(strings -> entry(strings[0], strings[1]));
 	}
 
-	public Stream<Path> parseCopyDir(URI path) {
+	public Stream<Entry<Path, Path>> parseCopyDir(URI path) {
 		return Optional.of(path)
 			.filter(uri -> uri.getSchemeSpecificPart().endsWith(DIR_CONTENT_POSTFIX))
 			.map(FileSystemRegistry::stripDirContentPostfix)//new URI
-			.map(this::readDir)
-			.map(Collection::stream)
-			.orElseGet(() -> Stream.of(Path.of(path)));
+			.map(this::list)
+			.orElseGet(() -> listFromParent(path));
+	}
+
+	@SneakyThrows
+	private Stream<Entry<Path, Path>> listFromParent(URI uri) {
+		Path baseDir = getPathFsRegistration(uri);
+		Path parent = baseDir.getParent();
+		return list(baseDir, parent == null ? baseDir : parent);
+	}
+
+	@SneakyThrows
+	private Stream<Entry<Path, Path>> list(URI uri) {
+		Path baseDir = getPathFsRegistration(uri);
+		return list(baseDir, baseDir);
+	}
+
+	private static Stream<Entry<Path, Path>> list(Path baseDir, Path relativeTo) throws IOException {
+		return Files.walk(baseDir).filter(Files::isRegularFile).map(p -> Map.entry(relativeTo.relativize(p), p));
 	}
 
 	@SneakyThrows
 	private static URI stripDirContentPostfix(URI uri) {
 		String ssp = uri.getSchemeSpecificPart();
 		return new URI(uri.getScheme(), ssp.substring(0, ssp.length() - DIR_CONTENT_POSTFIX.length()), uri.getFragment());
-	}
-
-	@SneakyThrows
-	private Collection<Path> readDir(URI uri) {
-		try (var dirs = Files.list(getPathFsRegistration(uri))) {
-			return dirs.toList();
-		}
 	}
 
 	@Override

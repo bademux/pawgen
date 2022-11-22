@@ -9,7 +9,6 @@ import net.pawet.pawgen.component.xml.ArticleParser;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Comparator.comparing;
@@ -30,6 +29,7 @@ public class ArticleQuery {
 	private List<Article> readLastFor(Category category, ZonedDateTime toDate, int limit) {
 		return flatten(category).filter(article -> !category.equals(article.getCategory()))
 			.filter(article -> isBeforeOrEqual(article.getDate(), toDate))
+			.distinct()
 			.sorted(comparing(Article::getDate).reversed())
 			.limit(limit)
 			.toList();
@@ -48,8 +48,8 @@ public class ArticleQuery {
 	}
 
 	private Collection<Article> readArticlesFor(Category category) {
-		try (var headers = articleParser.parse(storage.categoryAwareResource(category))) {
-			return headers.collect(Collectors.toList());
+		try (var resources = storage.read(category)) {
+			return resources.map(articleParser::parse).toList();
 		}
 	}
 
@@ -58,8 +58,8 @@ public class ArticleQuery {
 	}
 
 	private Collection<Article> readChildrenFor(Category category) {
-		try (var headers = storage.readChildren(category.toString()).flatMap(articleParser::parse)) {
-			return headers.collect(Collectors.toList());
+		try (var resources = storage.readChildren(category)) {
+			return resources.map(articleParser::parse).toList();
 		}
 	}
 

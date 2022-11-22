@@ -11,17 +11,18 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static java.nio.file.Files.newInputStream;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.util.function.Predicate.not;
 
 @Slf4j
-public record WatermarkFilterFactory(FileSystemRegistry fsRegistry) {
+public record WatermarkFilterFactory(Function<URI, Path> pathProvider) {
 
 	public Consumer<BufferedImage> create(String watermarkText, URI watermarkFile) {
 		if (watermarkFile != null) {
-			try (var is = readWatermarkFile(fsRegistry.getPathFsRegistration(watermarkFile))) {
+			try (var is = readWatermarkFile(pathProvider.apply(watermarkFile))) {
 				return WatermarkFilter.of(is);
 			} catch (Exception e) {
 				log.error("Can't read {}", watermarkFile);

@@ -6,55 +6,56 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
 
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.Writer;
+import java.net.URI;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.lang.Integer.MAX_VALUE;
-import static java.nio.file.Files.createDirectories;
-import static java.nio.file.Files.walk;
+import static java.nio.channels.Channels.newWriter;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.Files.*;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toUnmodifiableMap;
 import static lombok.AccessLevel.PACKAGE;
 
 @Slf4j
 @RequiredArgsConstructor(access = PACKAGE)
 public class Storage {
 
-	public static final String ARTICLE_FILENAME = "index.xml";
+	public static final String ARTICLE_FILENAME_PREFIX = "index.";
+	public static final String ARTICLE_FILENAME_SUFFIX = ".xml";
+	public static final String REDIRECTS_FILE = "_redirects";
 
 	private final Map<Entry<Path, String>, Resource> resourceCache = new ConcurrentHashMap<>();
 	private final Predicate<Path> isAttributeFile;
 	private final Sha1DigestService digestService;
-	private final Set<Path> staticDirs;
+	private final Map<String, Path> staticFiles;
 	private final Path contentDir;
 	private final Path outputDir;
 
-	public static Storage create(@NonNull Set<Path> staticDirs, @NonNull Path contentDir, @NonNull Path outputDir) {
+	public static Storage create(Stream<Entry<Path, Path>> relativePathPerPath, @NonNull Path contentDir, @NonNull Path outputDir) {
 		var metaService = new MetaService();
 		var digestService = new Sha1DigestService(metaService);
-		return new Storage(metaService::isAttributeFile, digestService, staticDirs, contentDir, outputDir);
-	}
-
-	@SneakyThrows
-	public Stream<ArticleResource> readChildren(String pathStr) {
-		return Files.list(contentDir.resolve(pathStr))
-			.filter(Files::isDirectory)
-			.map(p -> p.resolve(ARTICLE_FILENAME))
-			.filter(Files::isRegularFile)
-			.map(p -> new ArticleResource(Category.of(contentDir.relativize(p).getParent()), p, this));
+		try (relativePathPerPath) {
+			var staticFileMap = relativePathPerPath.collect(toMap(e -> e.getKey().toString(), Entry::getValue, (relativePath, __) -> {
+				throw new IllegalArgumentException("Multiple static files in static dir for" + relativePath);
+			}));
+			return new Storage(metaService::isAttributeFile, digestService, staticFileMap, contentDir, outputDir);
+		}
 	}
 
 	public Optional<Resource> resource(String rootRelativePath) {
@@ -74,33 +75,37 @@ public class Storage {
 		return resourceCache.computeIfAbsent(Map.entry(src, dest), path -> new SimpleResource(path.getKey(), resolveOutputDir(dest), this));
 	}
 
-	public ArticleResource categoryAwareResource(Category category) {
+	@SneakyThrows
+	public Stream<ArticleResource> readChildren(Category category) {
+		return Files.list(contentDir.resolve(category.toString()))
+			.filter(Files::isDirectory)
+			.flatMap(Storage::listArticlesInDir)
+			.map(p -> new ArticleResource(Category.of(contentDir.relativize(p).getParent()), p, this));
+	}
+
+	public Stream<ArticleResource> read(Category category) {
 		return Optional.ofNullable(category)
 			.map(Category::toString)
 			.map(contentDir::resolve)
-			.map(c -> c.resolve(ARTICLE_FILENAME))
+			.stream()
+			.flatMap(Storage::listArticlesInDir)
+			.map(path -> new ArticleResource(category, path, this));
+	}
+
+	@SneakyThrows
+	private static Stream<Path> listArticlesInDir(Path c) {
+		return Files.list(c)
 			.filter(Files::isRegularFile)
-			.map(path -> new ArticleResource(category, path, this))
-			.orElseThrow();
+			.filter(path -> {
+				String name = path.getFileName().toString();
+				return name.startsWith(ARTICLE_FILENAME_PREFIX) && name.endsWith(ARTICLE_FILENAME_SUFFIX);
+			});
 	}
 
-	public Stream<Resource> copyFiles() {
-		return staticDirs.stream().flatMap(this::getPathStream);
-	}
-
-	private Stream<Resource> getPathStream(Path copyPath) {
-		Path parent = copyPath.getParent();
-		Path basePath = parent == null ? copyPath : parent;
-		try {
-			return Files.walk(copyPath, MAX_VALUE)
-				.filter(Files::isRegularFile)
-				.map(p -> resource(p, basePath.relativize(p).toString()))
-				.filter(Optional::isPresent)
-				.map(Optional::get);
-		} catch (IOException e) {
-			log.error("Can't find in basePath {}", copyPath, e);
-		}
-		return Stream.empty();
+	public Stream<Resource> staticFiles() {
+		return staticFiles.entrySet().stream()
+			.filter(e -> !REDIRECTS_FILE.equalsIgnoreCase(e.getKey()))
+			.map(e -> createResource(e.getValue(), e.getKey()));
 	}
 
 	Path resolveInputDir(String pathStr) {
@@ -108,12 +113,9 @@ public class Storage {
 			return contentDir.resolve(pathStr).normalize();
 		}
 		pathStr = pathStr.substring(1);
-		for (Path staticDir : staticDirs) {
-			Path targetPath = staticDir.getFileSystem().getPath(pathStr);
-			Path staticDirName = staticDir.getFileName();
-			if (targetPath.startsWith(staticDirName)) {
-				return staticDir.resolve(staticDirName.relativize(targetPath));
-			}
+		Path staticFile = staticFiles.get(pathStr);
+		if (staticFile != null) {
+			return staticFile;
 		}
 		log.debug("looks like url {} is invalid, try to fix", pathStr);
 		return contentDir.resolve(pathStr).normalize();
@@ -149,7 +151,7 @@ public class Storage {
 	}
 
 	private static void createDirsIfNeeded(Path dir) throws IOException {
-		if (dir != null && Files.notExists(dir)) {
+		if (dir != null && notExists(dir)) {
 			createDirectories(dir);
 		}
 	}
@@ -163,7 +165,7 @@ public class Storage {
 	}
 
 	public boolean cleanupOutputDir() {
-		if (Files.notExists(outputDir)) {
+		if (notExists(outputDir)) {
 			return false;
 		}
 		try (var files = walk(outputDir).sorted(Collections.reverseOrder())) {
@@ -204,6 +206,33 @@ public class Storage {
 			return Files.getLastModifiedTime(file).toInstant();
 		} catch (IOException e) {
 			return Instant.MIN;
+		}
+	}
+
+	@SneakyThrows
+	public void writeAliases(List<Entry<String, String>> aliases) {
+		Path destRedirects = outputDir.resolve(REDIRECTS_FILE);
+		var userDefinedRedirects = staticFiles.get(REDIRECTS_FILE);
+		try (var writer = newWriter(write(destRedirects), UTF_8)) {
+			if (userDefinedRedirects != null) {
+				writeExistingFile(userDefinedRedirects, writer);
+			}
+			writer.append("#Autogenerated redirectsFile").append('\n');
+			for (Entry<String, String> alias : aliases) {
+				writer.append(URI.create(alias.getKey()).toASCIIString()).append(' ').append(URI.create(alias.getValue()).toASCIIString()).append('\n');
+			}
+			writer.append('\n');
+		}
+	}
+
+	private static void writeExistingFile(Path redirectsFile, Writer writer) {
+		try (var reader = Files.newBufferedReader(redirectsFile)) {
+			reader.transferTo(writer);
+			writer.append('\n');
+		} catch (FileNotFoundException e) {
+			log.trace("No _redirects", e);
+		} catch (Exception e) {
+			log.error("Cant process existing _redirects file");
 		}
 	}
 

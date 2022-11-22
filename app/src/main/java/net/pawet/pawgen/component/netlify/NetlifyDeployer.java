@@ -1,6 +1,7 @@
 package net.pawet.pawgen.component.netlify;
 
 import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -13,9 +14,11 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.*;
 import static lombok.AccessLevel.PRIVATE;
 
@@ -49,8 +52,13 @@ class NetlifyDeployer {
 	}
 
 	Stream<String> getRequiredFilesFor(String deployId) {
-		return netlifyClient.deploy(deployId).find().orElseThrow(() -> new IllegalStateException("Can't find deploy with id: " + deployId))
-			.getJsonArray("required").getValuesAs(JsonString.class).stream()
+		return netlifyClient.deploy(deployId).find()
+			.map(json -> json.get("required"))
+			.filter(not(JsonValue.NULL::equals))
+			.map(JsonValue::asJsonArray)
+			.stream()
+			.flatMap(Collection::stream)
+			.map(JsonString.class::cast)
 			.map(JsonString::getString);
 	}
 
@@ -154,6 +162,11 @@ final class Deployer<T extends FileDigest & FileData> {
 				log.debug("Got deployId '{}'", deployId);
 				var requiredFilesFor = client.getRequiredFilesFor(deployId).toList();
 				var files = requiredFilesFor.stream().map(unique::get).filter(Objects::nonNull).collect(toList());
+				if(files.isEmpty()){
+					client.cancelDeploy(deployId);
+					log.info("Closing previous deploy deployId {}, as it was nothing to upload", deployId);
+					return false;
+				}
 				log.info("Uploading {} files", files.size());
 				log.atTrace().setMessage("Uploading files: {}").addArgument(() -> files.stream().map(Object::toString).collect(joining())).log();
 				try {

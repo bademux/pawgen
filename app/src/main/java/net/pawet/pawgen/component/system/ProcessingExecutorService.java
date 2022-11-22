@@ -2,7 +2,6 @@ package net.pawet.pawgen.component.system;
 
 import lombok.NonNull;
 import lombok.SneakyThrows;
-import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
@@ -10,15 +9,21 @@ import java.util.List;
 import java.util.concurrent.*;
 
 @Slf4j
-public class ProcessingExecutorService implements ExecutorService {
+public final class ProcessingExecutorService implements ExecutorService {
 
 	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
-	private final Phaser phaser = new Phaser(1);
+	private final LinkedBlockingQueue<Future<?>> queue = new LinkedBlockingQueue<>();
 
 	@SneakyThrows
 	public void waitAllExecuted() {
-		phaser.arriveAndAwaitAdvance();
-		log.debug("Processed {}/{} tasks", phaser.getRegisteredParties() - 1,  phaser.getArrivedParties());
+		do {
+			var future = queue.poll();
+			if (future == null) {
+				break;
+			}
+			future.get();
+		} while (true);
+		log.debug("Processed tasks");
 	}
 
 	@Override
@@ -46,72 +51,57 @@ public class ProcessingExecutorService implements ExecutorService {
 		return executor.awaitTermination(timeout, unit);
 	}
 
+	@SneakyThrows
+	private <T> FutureTask<T> createFuture(Callable<T> task) {
+		var f = new FutureTask<>(task);
+		queue.put(f);
+		return f;
+	}
+
 	@Override
 	public void execute(@NonNull Runnable command) {
-		phaser.register();
-		executor.execute(() -> {
-			try {
-				command.run();
-			} finally {
-				phaser.arrive();
-			}
-		});
+		submit(Executors.callable(command));
 	}
 
 	@Override
 	public <T> Future<T> submit(@NonNull Callable<T> task) {
-		phaser.register();
-		return executor.submit(() -> {
-			try {
-				return task.call();
-			} finally {
-				phaser.arrive();
-			}
-		});
+		var f = createFuture(task);
+		executor.execute(f);
+		return f;
 	}
 
 	@Override
 	public <T> Future<T> submit(@NonNull Runnable task, T result) {
-		phaser.register();
-		return executor.submit(() -> {
-			try {
-				task.run();
-			} finally {
-				phaser.arrive();
-			}
-		}, result);
+		return submit(Executors.callable(task, result));
 	}
 
 	@Override
 	public Future<?> submit(@NonNull Runnable task) {
-		phaser.register();
-		return executor.submit(() -> {
-			try {
-				task.run();
-			} finally {
-				phaser.arrive();
-			}
-		});
+		return submit(Executors.callable(task));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) {
-		throw new UnsupportedOperationException("unimplemented");
+	public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
+		return (List) executor.invokeAll(tasks.stream().map(this::createFuture).map(Executors::callable).toList());
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) {
-		throw new UnsupportedOperationException("unimplemented");
+	public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException {
+		return (List) executor.invokeAll(tasks.stream().map(this::createFuture).map(Executors::callable).toList(), timeout, unit);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public <T> T invokeAny(Collection<? extends Callable<T>> tasks) {
-		throw new UnsupportedOperationException("unimplemented");
+	public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws ExecutionException, InterruptedException {
+		return (T) executor.invokeAny(tasks.stream().map(this::createFuture).map(Executors::callable).toList());
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) {
-		throw new UnsupportedOperationException("unimplemented");
+	public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws ExecutionException, InterruptedException, TimeoutException {
+		return (T) executor.invokeAny(tasks.stream().map(this::createFuture).map(Executors::callable).toList(), timeout, unit);
 	}
 
 }

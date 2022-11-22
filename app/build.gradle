@@ -128,11 +128,14 @@ dependencies {
 //	testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 
 	testImplementation enforcedPlatform(group: 'org.spockframework', name: 'spock-bom', version: spockVersion)
+	testImplementation group: 'com.github.pemistahl', name: 'lingua', version: '1.2.2'
+	testImplementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: '1.7.21'
 	testImplementation group: 'org.spockframework', name: 'spock-core'
 	testImplementation group: 'net.bytebuddy', name: 'byte-buddy', version: bytebuddyVersion
 	testImplementation group: 'org.objenesis', name: 'objenesis', version: objenesisVersion
 	testImplementation group: 'com.google.jimfs', name: 'jimfs', version: memoryfilesystemVersion
 	testImplementation group: 'com.github.tomakehurst', name: 'wiremock-jre8-standalone', version: wiremockVersion
+
 }
 
 extraJavaModuleInfo {
