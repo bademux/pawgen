@@ -44,13 +44,13 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 			if (isGreaterThanThumbnail(image.getWidth()) && hasThumbnailAttrs()) {
 				var attrs = processThumbnail(image, formatName);
 				writeWatermarkedImage(image, formatName);
+				resource.transfer();
 				return attrs;
 			}
 			return processImage(image, formatName);
 		} catch (Exception e) {
 			log.warn("Can't process image, just coping", e);
 		}
-		resource.transfer();
 		return attributes;
 	}
 

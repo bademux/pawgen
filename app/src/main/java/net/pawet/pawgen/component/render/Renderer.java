@@ -50,8 +50,13 @@ public class Renderer {
 
 	public Stream<Entry<String, String>> getAliases() {
 		return processedFiles.stream()
-			.flatMap(article -> article.getAliases().map(alias -> Map.entry(alias, article.getUrl())))
+			.flatMap(Renderer::getAliasPerArticleUrl)
 			.distinct();
+	}
+
+	private static Stream<Entry<String, String>> getAliasPerArticleUrl(Article article) {
+		String url = article.getUrl();
+		return article.getAliases().map(alias -> Map.entry(alias, url));
 	}
 
 	@ToString(onlyExplicitlyIncluded = true)
