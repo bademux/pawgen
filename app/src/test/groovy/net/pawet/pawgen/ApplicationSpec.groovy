@@ -37,31 +37,27 @@ class ApplicationSpec extends Specification {
 		and: 'site data'
 		write(pawFs.dir("$contentDir/newcat/test/_img").resolve('toster.bmp'), createTestImageAsByte(251, 27))
 
-		def newcatTestArticle = contentDir.resolve('newcat/test').resolve('index.xml')
+		def newcatTestArticle = contentDir.resolve('newcat/test').resolve('index.by.xml')
 		writeString(newcatTestArticle, '''\
 <?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl">
-<article en:title="illegal chars: *?|">
+<body title="illegal chars: *?|" type="article">
   <a href="http://example.com">external link</a>
   <a href="example">internal link</a>
   <a href="example/illegal chars: *?|">bad internal link</a>
   <a href="http://localhost">internal link with host</a>
   <img src="_img/toster.bmp"/>
-</article>
 </body>
 ''')
-		def newcatArticle = contentDir.resolve('newcat').resolve('index.xml')
+		def newcatArticle = contentDir.resolve('newcat').resolve('index.en.xml')
 		writeString(newcatArticle, '''\
 <?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl"><article en:title="newcat">newcat</article></body>
+<body title="newcat" type="article">newcat</body>
 ''')
 		var imageBmp = createTestImageAsByte(46, 27)
 		write(contentDir.resolve('image.bmp'), imageBmp)
-		writeString(contentDir.resolve('index.xml'), '''\
+		writeString(contentDir.resolve('index.en.xml'), '''\
 <?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl">
- <article en:title="Main"  by:title="Галоўная" file="staticFile.bin"><a href="/files/staticFile.bin">testArticle</a><img src="image.bmp"/></article>
-</body>
+<body title="Main" type="article" file="staticFile.bin"><a href="/files/staticFile.bin" by:alias="/alias.html" xmlns:by="http://site/by">testArticle</a><img src="image.bmp"/></body>
 ''')
 		writeString(staticDir.resolve('test.css'), 'test')
 		write(filesDir.resolve('staticFile.bin'), 'test'.bytes)

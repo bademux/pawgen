@@ -42,11 +42,9 @@ class NetlifyApplicationSpec extends Specification {
 		]).toUri() as String
 		and: 'site data'
 		write(contentDir.resolve('image.bmp'), createTestImageAsByte(46, 27))
-		writeString(contentDir.resolve('index.xml'), '''\
+		writeString(contentDir.resolve('index.by.xml'), '''\
 <?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl">
- <article en:title="Main"  by:title="Галоўная" file="staticFile.bin"><a href="/files/staticFile.bin">testArticle</a><img src="image.bmp" /></article>
-</body>
+<body title="Галоўная" type="article" file="staticFile.bin"><a href="/files/staticFile.bin">testArticle</a><img src="image.bmp" /></body>
 ''')
 		write(filesDir.resolve('staticFile.bin'), 'test'.bytes)
 		writeString(templateDir.resolve('index.html.mustache'), '{{{.}}}')
@@ -73,7 +71,6 @@ class NetlifyApplicationSpec extends Specification {
 			siteDeploy.files().collect(toMap({ it.path.string }, { it.sha.string })) == [
 				'/files/staticfile.bin': 'a94a8fe5ccb19ba61c4c0873d391e987982fbbd3',
 				'/image.bmp'           : '75443c0f6787be87868588f1b1e22955a64d5124',
-				'/main.html'           : '94de541ed98bf4a7d97b666eebac3c4eb16baf52',
 				'/галоўная.html'       : '94de541ed98bf4a7d97b666eebac3c4eb16baf52',
 			] as HashMap
 		}

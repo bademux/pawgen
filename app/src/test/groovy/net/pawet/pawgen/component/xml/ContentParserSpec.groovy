@@ -12,10 +12,10 @@ class ContentParserSpec extends Specification {
 		var contentParser = new ContentParser({ __, args -> args })
 		var data = Channels.newChannel(new ByteArrayInputStream('''\
 <?xml version="1.0" encoding="UTF-8" ?>
-<body xmlns:en="http://site/en" xmlns:by="http://site/by" xmlns:pl="http://site/pl"><article en:title="category2">test<p>test<i>link</i></p><i>link</i></article></body>
+<body title="category2" type="article">test<p>test<i>link</i></p><i>link</i></body>
 '''.bytes))
 		when:
-		var content = contentParser.read(data, 'category2') as String
+		var content = contentParser.read(data) as String
 		then:
 		content == 'test<p>test<i>link</i></p><i>link</i>'
 	}
