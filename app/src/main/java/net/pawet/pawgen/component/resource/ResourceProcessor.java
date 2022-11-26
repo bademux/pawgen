@@ -46,7 +46,7 @@ public final class ResourceProcessor implements Function<ResourceProcessor.Proce
 				.map(ResourceProcessor::safeApply)
 				.orElse(processingItem);
 		} catch (Exception e) {
-			log.warn("Error while processing tag '{}' in '{}'", processingItem.tagName, processingItem.category);
+			log.warn("Error while processing tag '{}' in '{}'", processingItem.tagName, processingItem.category, e);
 		}
 		return processingItem;
 	}
