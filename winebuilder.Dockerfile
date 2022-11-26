@@ -1,9 +1,9 @@
 #use DOCKER_BUILDKIT=1 to cache downloaded layer and --output to export built Artefact
-#DOCKER_BUILDKIT=1 docker build --progress=plain --file winebuilder.Dockerfile --output type=tar,dest=../artefact.tar .
+#./gradlew clean && DOCKER_BUILDKIT=1 docker build --progress=plain --file winebuilder.Dockerfile --output type=tar,dest=../artefact.tar .
 FROM scratch as caching-downloader
 ADD https://api.adoptium.net/v3/binary/latest/19/ga/windows/x64/jdk/hotspot/normal/eclipse /jdk.zip
 
-FROM alpine:3.16 as builder
+FROM alpine:3.17 as builder
 RUN apk add --no-cache --update wine git util-linux
 RUN adduser -D user
 ENV WINEPREFIX=/home/user \
