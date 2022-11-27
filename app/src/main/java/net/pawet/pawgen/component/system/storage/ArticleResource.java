@@ -42,7 +42,7 @@ public final class ArticleResource implements ReadableResource {
 		String fileName = srcPath.getFileName().toString();
 		int start = ARTICLE_FILENAME_PREFIX.length();
 		int end = fileName.indexOf(ARTICLE_FILENAME_SUFFIX);
-		if(start == end) {
+		if(start >= end) {
 			throw new IllegalStateException("File has no language in filename: " + srcPath);
 		}
 		return fileName.substring(start, end);

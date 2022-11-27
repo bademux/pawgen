@@ -1,9 +1,6 @@
 package net.pawet.pawgen.component.render;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Synchronized;
-import lombok.ToString;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
@@ -37,6 +34,7 @@ public class Renderer {
 		return new ArticleContext(header);
 	}
 
+	@SneakyThrows
 	void render(ArticleContext context) {
 		try (var writer = context.article.writer()) {
 			templater.render(writer, context, context.article.readContent());
@@ -45,6 +43,7 @@ public class Renderer {
 			log.debug("Error while generating article {}.", context, e);
 		}catch (Exception e) {
 			log.error("Error while generating article {}.", context, e);
+			throw e;
 		}
 	}
 
