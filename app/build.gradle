@@ -82,12 +82,13 @@ graalvmNative {
 configurations {
 	testCompileClasspath {
 		attributes { attribute(Attribute.of('javaModule', Boolean), false) }
+		exclude module: 'jai-imageio-core' // exclude loading image by mmap in tests
 	}
-	testRuntimeClasspath.exclude module: 'jai-imageio-core' // exclude loading image by mmap in tests
 	testRuntimeClasspath {
 		attributes { attribute(Attribute.of('javaModule', Boolean), false) }
-
+		exclude module: 'jai-imageio-core' // exclude loading image by mmap in tests
 	}
+
 }
 
 task downloadLombok() {
@@ -128,8 +129,6 @@ dependencies {
 //	testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 
 	testImplementation enforcedPlatform(group: 'org.spockframework', name: 'spock-bom', version: spockVersion)
-	testImplementation group: 'com.github.pemistahl', name: 'lingua', version: '1.2.2'
-	testImplementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: '1.7.21'
 	testImplementation group: 'org.spockframework', name: 'spock-core'
 	testImplementation group: 'net.bytebuddy', name: 'byte-buddy', version: bytebuddyVersion
 	testImplementation group: 'org.objenesis', name: 'objenesis', version: objenesisVersion
