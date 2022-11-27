@@ -44,7 +44,7 @@ public class ArticleQuery {
 	}
 
 	public Stream<Article> getParents(Category category) {
-		return Optional.ofNullable(category.getParent()).stream().flatMap(this::getArticles);
+		return Stream.ofNullable(category.getParent()).flatMap(this::getArticles);
 	}
 
 	private Collection<Article> readArticlesFor(Category category) {
@@ -54,7 +54,7 @@ public class ArticleQuery {
 	}
 
 	public Stream<Article> getChildren(Category category) {
-		return cacheChildren.computeIfAbsent(category, this::readChildrenFor).stream();
+		return cacheChildren.computeIfAbsent(category, this::readChildrenFor).stream().sorted();
 	}
 
 	private Collection<Article> readChildrenFor(Category category) {
