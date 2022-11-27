@@ -28,8 +28,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.*;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toUnmodifiableMap;
+import static java.util.stream.Collectors.*;
 import static lombok.AccessLevel.PACKAGE;
 
 @Slf4j
@@ -51,11 +50,19 @@ public class Storage {
 		var metaService = new MetaService();
 		var digestService = new Sha1DigestService(metaService);
 		try (relativePathPerPath) {
-			var staticFileMap = relativePathPerPath.collect(toMap(e -> e.getKey().toString(), Entry::getValue, (relativePath, __) -> {
+			var staticFileMap = relativePathPerPath.collect(toMap(e -> asRelativeUri(e.getKey()), Entry::getValue, (relativePath, __) -> {
 				throw new IllegalArgumentException("Multiple static files in static dir for" + relativePath);
 			}));
 			return new Storage(metaService::isAttributeFile, digestService, staticFileMap, contentDir, outputDir);
 		}
+	}
+
+	private static String asRelativeUri(Path relValue) {
+		var sj = new StringJoiner("/");
+		for (Path path : relValue) {
+			sj.add(path.toString());
+		}
+		return sj.toString();
 	}
 
 	public Optional<Resource> resource(String rootRelativePath) {
