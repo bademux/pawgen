@@ -1,4 +1,4 @@
-package net.pawet.pawgen.component.netlify;
+package net.pawet.pawgen.component.deployer;
 
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.netlify.NetlifyHttpException.NetlifyRateLimitHttpException;
+import net.pawet.pawgen.component.deployer.DeployerHttpException.DeployerRateLimitHttpException;
 
 import java.net.URI;
 import java.time.Clock;
@@ -14,7 +14,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -173,7 +172,7 @@ final class Deployer<T extends FileDigest & FileData> {
 					long filesUploaded = client.uploadFiles(deployId, files);
 					log.info("Uploaded {} files, left: {}", filesUploaded, files.size() - filesUploaded);
 					return filesUploaded == files.size();
-				} catch (NetlifyHttpException e) {
+				} catch (DeployerHttpException e) {
 					log.error("Error while uploading: '{}': attempt to upload: {}", e.getMessage(), files.stream().map(Object::toString).collect(joining(",")));
 					if (e.getHttpStatusCode() == 422) {
 						client.cancelDeploy(deployId);
@@ -219,7 +218,7 @@ final class Retrier {
 	private boolean safeOperation(BooleanSupplier deployer) {
 		try {
 			return deployer.getAsBoolean();
-		} catch (NetlifyRateLimitHttpException e) {
+		} catch (DeployerRateLimitHttpException e) {
 			long delay = clock.millis() - e.getReset();
 			if (delay > 0) {
 				log.info("Requests are rate limited. Waiting {} seconds", delay / 1000);

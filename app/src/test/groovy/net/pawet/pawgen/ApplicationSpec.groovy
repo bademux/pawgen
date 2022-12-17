@@ -31,7 +31,7 @@ class ApplicationSpec extends Specification {
 			outputDir       : outputDir.toUri() as String,
 			hosts           : 'localhost',
 			dateFrom        : EPOCH.toString(),
-			'netlify.enable': false as String,
+			'deployer'      : 'NONE',
 			'watermark.text': '', // disable as watermarking produces different result on win, it makes assertion not trivial
 		]).toUri() as String
 		and: 'site data'

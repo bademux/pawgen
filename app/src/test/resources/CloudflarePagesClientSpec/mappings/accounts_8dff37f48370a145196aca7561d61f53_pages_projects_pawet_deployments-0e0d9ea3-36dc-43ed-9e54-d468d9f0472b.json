@@ -1,0 +1,28 @@
+{
+  "id" : "0e0d9ea3-36dc-43ed-9e54-d468d9f0472b",
+  "name" : "accounts_8dff37f48370a145196aca7561d61f53_pages_projects_pawet_deployments",
+  "request" : {
+    "url" : "/accounts/8dff37f48370a145196aca7561d61f53/pages/projects/pawet/deployments",
+    "method" : "POST",
+    "bodyPatterns" : [ {
+      "anything" : "anything"
+    } ]
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\n  \"result\": {\n    \"id\": \"5b76c060-5315-4f11-8a6f-5d76e8ef5c0b\",\n    \"short_id\": \"5b76c060\",\n    \"project_id\": \"2c3d4411-4e26-489e-bd21-1f14bc50b5ca\",\n    \"project_name\": \"pawet\",\n    \"environment\": \"production\",\n    \"url\": \"https://5b76c060.pawet.pages.dev\",\n    \"created_on\": \"2022-12-19T17:44:19.059854Z\",\n    \"modified_on\": \"2022-12-19T17:44:19.059854Z\",\n    \"latest_stage\": {\n      \"name\": \"queued\",\n      \"started_on\": null,\n      \"ended_on\": null,\n      \"status\": \"idle\"\n    },\n    \"deployment_trigger\": {\n      \"type\": \"ad_hoc\",\n      \"metadata\": {\n        \"branch\": \"main\",\n        \"commit_hash\": \"\",\n        \"commit_message\": \"\",\n        \"commit_dirty\": false\n      }\n    },\n    \"stages\": [\n      {\n        \"name\": \"queued\",\n        \"started_on\": null,\n        \"ended_on\": null,\n        \"status\": \"idle\"\n      },\n      {\n        \"name\": \"initialize\",\n        \"started_on\": null,\n        \"ended_on\": null,\n        \"status\": \"idle\"\n      },\n      {\n        \"name\": \"clone_repo\",\n        \"started_on\": null,\n        \"ended_on\": null,\n        \"status\": \"idle\"\n      },\n      {\n        \"name\": \"build\",\n        \"started_on\": null,\n        \"ended_on\": null,\n        \"status\": \"idle\"\n      },\n      {\n        \"name\": \"deploy\",\n        \"started_on\": null,\n        \"ended_on\": null,\n        \"status\": \"idle\"\n      }\n    ],\n    \"build_config\": {\n      \"build_command\": null,\n      \"destination_dir\": null,\n      \"root_dir\": null,\n      \"web_analytics_tag\": null,\n      \"web_analytics_token\": null\n    },\n    \"env_vars\": {},\n    \"compatibility_date\": \"2022-12-16\",\n    \"compatibility_flags\": [],\n    \"build_image_major_version\": 1,\n    \"usage_model\": null,\n    \"aliases\": null,\n    \"is_skipped\": false,\n    \"production_branch\": \"main\"\n  },\n  \"success\": true,\n  \"errors\": [],\n  \"messages\": []\n}\n",
+    "headers" : {
+      "Date" : "Mon, 19 Dec 2022 17:44:20 GMT",
+      "Content-Type" : "application/json; charset=UTF-8",
+      "CF-Ray" : "77c1f208aaf7fbc2-WAW",
+      "Set-Cookie" : [ "__cflb=0H28vgHxwvgAQtjUGU56Rb8iNWZVUvXhds8jHnK4qHo; SameSite=Lax; path=/; expires=Mon, 19-Dec-22 20:14:21 GMT; HttpOnly", "__cfruid=ae6fe9651321149a3ce3e663a8057eafd24e2ad0-1671471860; path=/; domain=.api.cloudflare.com; HttpOnly; Secure; SameSite=None" ],
+      "Vary" : "Accept-Encoding",
+      "CF-Cache-Status" : "DYNAMIC",
+      "x-envoy-upstream-service-time" : "1463",
+      "Server" : "cloudflare"
+    }
+  },
+  "uuid" : "0e0d9ea3-36dc-43ed-9e54-d468d9f0472b",
+  "persistent" : true,
+  "insertionIndex" : 4
+}

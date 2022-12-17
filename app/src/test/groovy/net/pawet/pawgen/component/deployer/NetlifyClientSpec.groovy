@@ -1,4 +1,4 @@
-package net.pawet.pawgen.component.netlify
+package net.pawet.pawgen.component.deployer
 
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier
 import spock.lang.AutoCleanup

@@ -1,0 +1,29 @@
+{
+  "id" : "6cde3906-652f-4dc5-9e32-7698979245d2",
+  "name" : "pages_assets_upsert-hashes",
+  "request" : {
+    "url" : "/pages/assets/upsert-hashes",
+    "method" : "POST",
+    "bodyPatterns" : [ {
+      "equalToJson" : "{\"hashes\":[\"669a2c84d4eb3d540cd258b34af26909f6173cef\",\"b52f5b9edc1d692a8712f84667967281e1ce8770\"]}",
+      "ignoreArrayOrder" : true,
+      "ignoreExtraElements" : true
+    } ]
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\"success\":true}",
+    "headers" : {
+      "Date" : "Mon, 19 Dec 2022 17:44:22 GMT",
+      "Content-Type" : "application/json",
+      "CF-Ray" : "77c1f21eddb45037-WAW",
+      "Set-Cookie" : [ "__cflb=0H28vgHxwvgAQtjUGU56Rb8iNWZVUvXheNEkLCmYf6M; SameSite=Lax; path=/; expires=Mon, 19-Dec-22 20:14:23 GMT; HttpOnly", "__cfruid=5e57654e06965d50042e06127f1ed05522e4486e-1671471862; path=/; domain=.api.cloudflare.com; HttpOnly; Secure; SameSite=None" ],
+      "Vary" : "Accept-Encoding",
+      "CF-Cache-Status" : "DYNAMIC",
+      "Server" : "cloudflare"
+    }
+  },
+  "uuid" : "6cde3906-652f-4dc5-9e32-7698979245d2",
+  "persistent" : true,
+  "insertionIndex" : 6
+}

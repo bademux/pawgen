@@ -118,8 +118,7 @@ dependencies {
 	implementation project(path: ':twelvemonkeys', configuration: 'moduleJar')
 	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
 	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
-	implementation group: 'jakarta.json', name: 'jakarta.json-api', version: jakartajsonVersion
-	implementation group: 'org.glassfish', name: 'jakarta.json', version: jakartajsonVersion, classifier: 'module'
+	implementation group: 'org.eclipse.parsson', name: 'jakarta.json', version: parssonVersion
 	implementation group: 'org.slf4j', name: 'slf4j-jdk14', version: slf4jVersion
 
 

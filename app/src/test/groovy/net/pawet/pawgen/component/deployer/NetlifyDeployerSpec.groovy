@@ -1,4 +1,4 @@
-package net.pawet.pawgen.component.netlify
+package net.pawet.pawgen.component.deployer
 
 import spock.lang.Specification
 import java.lang.Void as Should

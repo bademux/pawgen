@@ -5,8 +5,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Pawgen;
-import net.pawet.pawgen.component.netlify.DeployerFactory;
-import net.pawet.pawgen.component.netlify.FileDigestData;
+import net.pawet.pawgen.component.deployer.DeployerFactory;
+import net.pawet.pawgen.component.deployer.FileDigestData;
 import net.pawet.pawgen.component.system.CliOptions;
 import net.pawet.pawgen.component.system.storage.DigestAwareResource;
 
@@ -35,8 +35,8 @@ public class Application {
 			var renderIn = app.render();
 			long startDeploy = CLOCK.millis();
 			try (var files = app.readOutputDir()) {
-				new DeployerFactory(config.getNetlifyUrl(), config.getAccessToken(), config.getSiteId(), config.isNetlifyEnabled())
-					.create()
+				new DeployerFactory(config.getNetlifyUrl(), config.getAccessToken(), config.getSiteId())
+					.create(DeployerFactory.Type.from(config.getDeployerType()))
 					.accept(files.map(DigestAwareResourceFile::new).toList());
 			}
 			log.info("Cleanup {}min, render {}min, img processing {}min, copy resources {}min, deploy {}min",

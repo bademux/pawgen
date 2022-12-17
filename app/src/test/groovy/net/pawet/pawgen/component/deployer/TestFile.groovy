@@ -1,4 +1,4 @@
-package net.pawet.pawgen.component.netlify
+package net.pawet.pawgen.component.deployer
 
 import lombok.EqualsAndHashCode
 import lombok.Getter

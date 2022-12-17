@@ -48,7 +48,7 @@ public final class CliOptions {
 	@ToString.Include
 	private final Set<String> hosts;
 	@ToString.Include
-	private final boolean netlifyEnabled;
+	private final String deployerType;
 	@ToString.Include
 	private final URI netlifyUrl;
 	private final String accessToken;
@@ -131,9 +131,8 @@ public final class CliOptions {
 			.filter(Objects::nonNull)
 			.filter(not(String::isBlank))
 			.forEach(optionsBuilder::host);
-		propertyProvider.apply("netlify.enable")
-			.map(Boolean::parseBoolean)
-			.ifPresent(optionsBuilder::netlifyEnabled);
+		propertyProvider.apply("deployer")
+			.ifPresent(optionsBuilder::deployerType);
 		propertyProvider.apply("netlify.url")
 			.map(URI::create)
 			.ifPresent(optionsBuilder::netlifyUrl);
@@ -170,7 +169,7 @@ public final class CliOptions {
 		config.put("outputDir", "zip:/%USER_HOME%/Desktop/pawgen/site.zip?create,true&useTempFile,true&noCompression,false");
 		config.put("templatesDir", "./templates");
 		config.put("hosts", "pawgen.mydomain,test.pawgen.mydomain");
-		config.put("netlify.enable", Boolean.TRUE.toString());
+		config.put("deployer", "NETLIFY");
 //#https://app.netlify.com/user/applications#personal-access-tokens
 		config.put("netlify.accessToken", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 //#https://app.netlify.com/sites/pawet/settings/general#site-details
@@ -236,7 +235,7 @@ public final class CliOptions {
 	private static CliOptions create(String contentDir, String outputDir, String templatesDir,
 									 @Singular Set<String> staticDirs, String watermarkText, URI watermarkUri,
 									 Instant dateFrom, @Singular Set<String> hosts,
-									 boolean netlifyEnabled, URI netlifyUrl, String accessToken, String siteId) {
+									 @NonNull String deployerType, URI netlifyUrl, String accessToken, String siteId) {
 		var contentDirPath = ofNullable(contentDir)
 			.map(CliOptions::createUri)
 			.orElseThrow(() -> new IllegalArgumentException("Please provide contentDir"));
@@ -250,14 +249,11 @@ public final class CliOptions {
 			.filter(Objects::nonNull)
 			.map(CliOptions::createUri)
 			.collect(toUnmodifiableSet());
-		if (netlifyEnabled && (accessToken == null || accessToken.isBlank()) && (siteId == null || siteId.isBlank())) {
-			throw new IllegalArgumentException("Please provide 'netlify.accessToken' and 'netlify.siteId' or disable Netlify by 'netlify.enabled=false'");
-		}
 		return new CliOptions(
 			contentDirPath, outputDirPath, templatesDirPath, staticDirUris,
 			watermarkText, watermarkUri,
 			dateFrom,
-			hosts, netlifyEnabled, netlifyUrl, accessToken, siteId
+			hosts, deployerType, netlifyUrl, accessToken, siteId
 		);
 	}
 
