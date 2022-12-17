@@ -1,4 +1,4 @@
-package net.pawet.pawgen.component.netlify
+package net.pawet.pawgen.deployer
 
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier
 import spock.lang.AutoCleanup
@@ -8,7 +8,6 @@ import util.RecordingWireMock
 
 import java.lang.Void as Should
 
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import static java.lang.System.getenv
 
 class NetlifyClientSpec extends Specification {
@@ -39,8 +38,8 @@ class NetlifyClientSpec extends Specification {
 
 	@AutoCleanup
 	def wireMock = new RecordingWireMock(
-		options().withRootDirectory("src/test/resources/${this.class.simpleName}").port(8080).notifier(new Slf4jNotifier(true)),
-		NetlifyClient.NETLIFY_BASE_URL
+		com.github.tomakehurst.wiremock.core.WireMockConfiguration.options().withRootDirectory("src/test/resources/${this.class.simpleName}").port(8080).notifier(new Slf4jNotifier(true)),
+            NetlifyClient.NETLIFY_BASE_URL
 	).start()
 
 	def client = new NetlifyClient("http://localhost:$wireMock.port".toURI(), getenv().getOrDefault('NETLIFY_ACCESSTOKEN', 'testToken'))

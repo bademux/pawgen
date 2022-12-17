@@ -2,42 +2,48 @@ package net.pawet.pawgen.component.system.storage;
 
 import lombok.*;
 
-import java.io.InputStream;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.joining;
-import static net.pawet.pawgen.component.system.storage.Sha1DigestService.formatHex;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class DigestAwareResource implements ReadableResource {
 
+	@ToString.Include
+	@EqualsAndHashCode.Include
+	private final Map<String, String> digest;
 	@Getter
 	@ToString.Include
 	@EqualsAndHashCode.Include
-	private final String digest;
+	private final String path;
 	@Getter
 	@ToString.Include
-	@EqualsAndHashCode.Include
-	private final String rootRelativePath;
-	private final Supplier<ReadableByteChannel> inputStreamSupplier;
+	private final long sizeInBytes;
+	private final Supplier<ReadableByteChannel> readableSupplier;
 
-	static DigestAwareResource of(byte[] digest, Path srcPath, Path relativePath, Storage storage) {
-		return new DigestAwareResource(formatHex(digest), getRelative(relativePath), () -> storage.read(srcPath));
+	public Optional<String> getDigestBy(String name) {
+		return Optional.ofNullable(digest.get(name));
+	}
+
+	static DigestAwareResource of(Map<String, String> digests, Path relativePath, long sizeInBytes, Supplier<ReadableByteChannel> readableSupplier) {
+		return new DigestAwareResource(digests, getRelative(relativePath), sizeInBytes,  readableSupplier);
 	}
 
 	private static String getRelative(Path relativePath) {
 		return StreamSupport.stream(relativePath.spliterator(), true)
 			.map(Path::toString)
-			.collect(joining("/"));
+			.collect(joining("/", "/", ""));
 	}
 
 	@Override
 	public ReadableByteChannel readable() {
-		return inputStreamSupplier.get();
+		return readableSupplier.get();
 	}
 }

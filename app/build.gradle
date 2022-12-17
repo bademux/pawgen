@@ -96,6 +96,7 @@ dependencies {
 	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	implementation project(path: ':twelvemonkeys', configuration: 'moduleJar')
+	implementation project(path: ':deployer')
 	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
 	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
 	implementation group: 'org.eclipse.parsson', name: 'parsson', version: parssonVersion

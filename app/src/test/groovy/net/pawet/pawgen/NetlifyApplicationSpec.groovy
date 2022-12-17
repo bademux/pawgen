@@ -4,7 +4,7 @@ import com.github.tomakehurst.wiremock.common.Slf4jNotifier
 import com.github.tomakehurst.wiremock.core.Options
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import com.github.tomakehurst.wiremock.extension.responsetemplating.ResponseTemplateTransformer
-import net.pawet.pawgen.component.netlify.NetlifyClient
+import net.pawet.pawgen.deployer.NetlifyClient
 import spock.lang.AutoCleanup
 import spock.lang.Specification
 import spock.lang.Unroll
@@ -35,7 +35,7 @@ class NetlifyApplicationSpec extends Specification {
 			staticDirs           : filesDir.toUri() as String,
 			templatesDir         : templateDir.toUri() as String,
 			outputDir            : outputDir.toUri() as String,
-			'netlify.enable'     : true as String,
+			deployers            : 'NETLIFY',
 			'netlify.url'        : netlifyUrl as String,
 			'netlify.accessToken': netlifyAccessToken,
 			'netlify.siteAppId'  : netlifySiteAppId,
@@ -91,7 +91,7 @@ class NetlifyApplicationSpec extends Specification {
 				context.length()
 			}))
 			.withRootDirectory("src/test/resources/$NetlifyApplicationSpec.simpleName")
-			.port(8080)
+			.dynamicPort()
 			.notifier(new Slf4jNotifier(true)),
 		NetlifyClient.NETLIFY_BASE_URL
 	).start()

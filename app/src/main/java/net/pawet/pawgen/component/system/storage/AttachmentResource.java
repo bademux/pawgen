@@ -7,6 +7,7 @@ import lombok.ToString;
 import lombok.experimental.Delegate;
 
 import static lombok.AccessLevel.PACKAGE;
+import static net.pawet.pawgen.component.system.storage.FileUtils.parseFileExt;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
@@ -23,18 +24,7 @@ public final class AttachmentResource implements Resource {
 	private final String type;
 
 	public static AttachmentResource of(Resource resource, String file) {
-		return new AttachmentResource(resource, file, parseFileExt(file));
-	}
-
-	static String parseFileExt(String file) {
-		if (file == null) {
-			return null;
-		}
-		int dotIndex = file.lastIndexOf('.');
-		if (dotIndex == -1 || dotIndex == file.length() - 1) {
-			return null;
-		}
-		return file.substring(dotIndex + 1).toLowerCase();
+		return new AttachmentResource(resource, file, parseFileExt(file).toLowerCase());
 	}
 
 }

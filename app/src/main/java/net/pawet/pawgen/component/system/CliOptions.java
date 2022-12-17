@@ -17,27 +17,30 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static java.util.Optional.ofNullable;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.*;
-import static lombok.AccessLevel.PRIVATE;
 
 @Slf4j
 @Getter
 @ToString(onlyExplicitlyIncluded = true)
-@RequiredArgsConstructor
+@Builder
 public final class CliOptions {
 	private static final String OUTPUT_DIR = "./public";
 	private static final String TEMPLATES_DIR = "./templates";
 	private static final String STATIC_DIR = "./static";
+	public static final Pattern COMMA_SEPARATED = Pattern.compile(",");
 
 	@ToString.Include
+	@NonNull
 	private final URI contentUri;
+	@Builder.Default
 	@ToString.Include
-	private final URI outputUri;
+	private final URI outputUri = createUri(System.getProperty("user.dir") + '/' + OUTPUT_DIR);;
+	@Builder.Default
 	@ToString.Include
-	private final URI templatesUri;
+	private final URI templatesUri = createUri(System.getProperty("user.dir") + '/' + TEMPLATES_DIR);
 	@ToString.Include
+	@Singular("staticUri")
 	private final Collection<URI> staticUris;
 	@ToString.Include
 	private final String watermarkText;
@@ -46,14 +49,22 @@ public final class CliOptions {
 	@ToString.Include
 	private final Instant dateFrom;
 	@ToString.Include
+	@Singular
 	private final Set<String> hosts;
 	@ToString.Include
-	private final boolean netlifyEnabled;
+	private final String deployerNames;
 	@ToString.Include
 	private final URI netlifyUrl;
-	private final String accessToken;
+	private final String netlifyAccessToken;
 	@ToString.Include
-	private final String siteId;
+	private final String netlifySiteId;
+	@ToString.Include
+	private final URI cloudflarePagesUrl;
+	private final String cloudflarePagesToken;
+	@ToString.Include
+	private final String cloudflarePagesAccountId;
+	@ToString.Include
+	private final String cloudflarePagesProjectName;
 
 	public static final String USER_HOME = System.getProperty("user.home");
 
@@ -113,34 +124,46 @@ public final class CliOptions {
 			.flatMap(CliOptions::createUriOpt)
 			.ifPresent(optionsBuilder::watermarkUri);
 		propertyProvider.apply("contentDir")
-			.ifPresent(optionsBuilder::contentDir);
+			.map(CliOptions::createUri)
+			.ifPresent(optionsBuilder::contentUri);
 		propertyProvider.apply("outputDir")
-			.ifPresent(optionsBuilder::outputDir);
+			.map(CliOptions::createUri)
+			.ifPresent(optionsBuilder::outputUri);
 		propertyProvider.apply("templatesDir")
-			.ifPresent(optionsBuilder::templatesDir);
+			.map(CliOptions::createUri)
+			.ifPresent(optionsBuilder::templatesUri);
 		propertyProvider.apply("staticDirs").stream()
-			.flatMap(Pattern.compile(",")::splitAsStream)
+			.flatMap(COMMA_SEPARATED::splitAsStream)
 			.filter(Objects::nonNull)
 			.filter(not(String::isBlank))
-			.forEach(optionsBuilder::staticDir);
+			.map(CliOptions::createUri)
+			.forEach(optionsBuilder::staticUri);
 		propertyProvider.apply("dateFrom")
 			.map(Instant::parse)
 			.ifPresent(optionsBuilder::dateFrom);
 		propertyProvider.apply("hosts").stream()
-			.flatMap(Pattern.compile(",")::splitAsStream)
+			.flatMap(COMMA_SEPARATED::splitAsStream)
 			.filter(Objects::nonNull)
 			.filter(not(String::isBlank))
 			.forEach(optionsBuilder::host);
-		propertyProvider.apply("netlify.enable")
-			.map(Boolean::parseBoolean)
-			.ifPresent(optionsBuilder::netlifyEnabled);
+		propertyProvider.apply("deployers")
+			.ifPresent(optionsBuilder::deployerNames);
 		propertyProvider.apply("netlify.url")
 			.map(URI::create)
 			.ifPresent(optionsBuilder::netlifyUrl);
 		propertyProvider.apply("netlify.accessToken")
-			.ifPresent(optionsBuilder::accessToken);
+			.ifPresent(optionsBuilder::netlifyAccessToken);
 		propertyProvider.apply("netlify.siteAppId")
-			.ifPresent(optionsBuilder::siteId);
+			.ifPresent(optionsBuilder::netlifySiteId);
+		propertyProvider.apply("cloudflarepages.url")
+			.map(URI::create)
+			.ifPresent(optionsBuilder::cloudflarePagesUrl);
+		propertyProvider.apply("cloudflarepages.token")
+			.ifPresent(optionsBuilder::cloudflarePagesToken);
+		propertyProvider.apply("cloudflarepages.accountId")
+			.ifPresent(optionsBuilder::cloudflarePagesAccountId);
+		propertyProvider.apply("cloudflarepages.projectName")
+			.ifPresent(optionsBuilder::cloudflarePagesProjectName);
 	}
 
 	private static Function<String, Optional<String>> getConfigFilePropertyProvider(Collection<String> args) {
@@ -170,7 +193,7 @@ public final class CliOptions {
 		config.put("outputDir", "zip:/%USER_HOME%/Desktop/pawgen/site.zip?create,true&useTempFile,true&noCompression,false");
 		config.put("templatesDir", "./templates");
 		config.put("hosts", "pawgen.mydomain,test.pawgen.mydomain");
-		config.put("netlify.enable", Boolean.TRUE.toString());
+		config.put("deployer", "NETLIFY");
 //#https://app.netlify.com/user/applications#personal-access-tokens
 		config.put("netlify.accessToken", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 //#https://app.netlify.com/sites/pawet/settings/general#site-details
@@ -221,44 +244,18 @@ public final class CliOptions {
 		var dirs = args.limit(4).toArray(String[]::new);
 		switch (dirs.length) {
 			case 4:
-				optionsBuilder.staticDirs(Set.of(dirs[3]));
+				Stream.of(dirs[3])
+					.flatMap(COMMA_SEPARATED::splitAsStream)
+					.map(CliOptions::createUri)
+					.forEach(optionsBuilder::staticUri);
 			case 3:
-				optionsBuilder.templatesDir(dirs[2]);
+				optionsBuilder.templatesUri(createUri(dirs[2]));
 			case 2:
-				optionsBuilder.outputDir(dirs[1]);
+				optionsBuilder.outputUri(createUri(dirs[1]));
 			case 1:
-				optionsBuilder.contentDir(dirs[0]);
+				optionsBuilder.contentUri(createUri(dirs[0]));
 			default:
 		}
-	}
-
-	@Builder(access = PRIVATE)
-	private static CliOptions create(String contentDir, String outputDir, String templatesDir,
-									 @Singular Set<String> staticDirs, String watermarkText, URI watermarkUri,
-									 Instant dateFrom, @Singular Set<String> hosts,
-									 boolean netlifyEnabled, URI netlifyUrl, String accessToken, String siteId) {
-		var contentDirPath = ofNullable(contentDir)
-			.map(CliOptions::createUri)
-			.orElseThrow(() -> new IllegalArgumentException("Please provide contentDir"));
-		var outputDirPath = ofNullable(outputDir)
-			.map(CliOptions::createUri)
-			.orElseGet(() -> createUri(System.getProperty("user.dir") + '/' + OUTPUT_DIR));
-		var templatesDirPath = ofNullable(templatesDir)
-			.map(CliOptions::createUri)
-			.orElseGet(() -> createUri(System.getProperty("user.dir") + '/' + TEMPLATES_DIR));
-		var staticDirUris = staticDirs.stream()
-			.filter(Objects::nonNull)
-			.map(CliOptions::createUri)
-			.collect(toUnmodifiableSet());
-		if (netlifyEnabled && (accessToken == null || accessToken.isBlank()) && (siteId == null || siteId.isBlank())) {
-			throw new IllegalArgumentException("Please provide 'netlify.accessToken' and 'netlify.siteId' or disable Netlify by 'netlify.enabled=false'");
-		}
-		return new CliOptions(
-			contentDirPath, outputDirPath, templatesDirPath, staticDirUris,
-			watermarkText, watermarkUri,
-			dateFrom,
-			hosts, netlifyEnabled, netlifyUrl, accessToken, siteId
-		);
 	}
 
 }

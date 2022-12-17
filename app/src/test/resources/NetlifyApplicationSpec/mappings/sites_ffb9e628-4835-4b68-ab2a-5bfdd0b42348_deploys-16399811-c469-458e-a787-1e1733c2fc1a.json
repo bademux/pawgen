@@ -5,7 +5,7 @@
     "url" : "/sites/ffb9e628-4835-4b68-ab2a-5bfdd0b42348/deploys?title=pawgen_deployer",
     "method" : "POST",
     "bodyPatterns" : [ {
-      "equalToJson" : "{\"async\":true,\"files\":{\"files/staticFile.bin\":\"a94a8fe5ccb19ba61c4c0873d391e987982fbbd3\",\"_redirects\":\"114ca0b6f9f1c773d353474bf165aa6faf6f63e2\",\"галоўная.html\":\"f427683182cc08ce6020cf461fd3bdc96757a3ef\"}}",
+      "equalToJson" : "{\"async\":true,\"files\":{\"/files/staticFile.bin\":\"a94a8fe5ccb19ba61c4c0873d391e987982fbbd3\",\"/_redirects\":\"114ca0b6f9f1c773d353474bf165aa6faf6f63e2\",\"/галоўная.html\":\"f427683182cc08ce6020cf461fd3bdc96757a3ef\"}}",
       "ignoreArrayOrder" : true,
       "ignoreExtraElements" : true
     } ]

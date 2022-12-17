@@ -1,8 +1,8 @@
-package net.pawet.pawgen.component.netlify
+package net.pawet.pawgen.deployer
 
 import spock.lang.Specification
-import java.lang.Void as Should
 
+import java.lang.Void as Should
 import java.util.stream.Stream
 
 class NetlifyDeployerSpec extends Specification {
@@ -11,11 +11,11 @@ class NetlifyDeployerSpec extends Specification {
 		given:
 		def data = [new TestFile('/test')]
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, data)
+		def deployer = new Operation(client, data)
 		when:
-		def isSuccess = deployer.deployWithState(state)
+		boolean isDone = deployer.deployWithState(state)
 		then:
-		isSuccess == false
+		isDone == false
 		and:
 		1 * client.createDeploy(data) >> Optional.of('deployId')
 		0 * client.uploadFiles('deployId', data) >> false
@@ -29,11 +29,11 @@ class NetlifyDeployerSpec extends Specification {
 		given:
 		def data = [new TestFile('/test')]
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, data, 'deployId')
+		def deployer = new Operation(client, data, 'deployId')
 		when:
-		def isSuccess = deployer.deployWithState(state)
+		boolean isDone = deployer.deployWithState(state)
 		then:
-		isSuccess == true
+		isDone == true
 		and:
 		1 * client.getRequiredFilesFor('deployId') >> Stream.of('/test'.digest('SHA-1'))
 		1 * client.uploadFiles('deployId', data) >> 1
@@ -46,11 +46,11 @@ class NetlifyDeployerSpec extends Specification {
 	Should "upload files for #state with no deployId"() {
 		given:
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, [])
+		def deployer = new Operation(client, [])
 		when:
-		def isSuccess = deployer.deployWithState(state)
+		boolean isDone = deployer.deployWithState(state)
 		then:
-		isSuccess == true
+		isDone == true
 		and: 'no more invocations'
 		0 * _
 		where:
@@ -61,11 +61,11 @@ class NetlifyDeployerSpec extends Specification {
 		given:
 		def data = [new TestFile("/test_file")]
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, data)
+		def deployer = new Operation(client, data)
 		when:
-		def isSuccess = deployer.deployWithState('preparing')
+		boolean isDone = deployer.deployWithState('preparing')
 		then:
-		isSuccess == false
+		isDone == false
 		and: 'no more invocations'
 		0 * _
 	}
@@ -74,11 +74,11 @@ class NetlifyDeployerSpec extends Specification {
 		given:
 		def data = [new TestFile("/test_file")]
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, data)
+		def deployer = new Operation(client, data)
 		when:
-		def isSuccess = deployer.deployWithState('ready')
+		boolean isDone = deployer.deployWithState('ready')
 		then:
-		isSuccess == true
+		isDone == true
 		and: 'no more invocations'
 		0 * _
 	}

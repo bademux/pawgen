@@ -1,0 +1,31 @@
+{
+  "id" : "c4c7e92e-7a70-44ca-b0ce-e883df15cde3",
+  "name" : "pages_assets_upload",
+  "request" : {
+    "url" : "/pages/assets/upload",
+    "method" : "POST",
+    "bodyPatterns" : [ {
+      "equalToJson" : "[{\"key\":\"669a2c84d4eb3d540cd258b34af26909f6173cef\",\"metadata\":{\"contentType\":\"text/plain\"},\"base64\":true,\"value\":\"ZmlsZTMudHh0\"},{\"key\":\"b52f5b9edc1d692a8712f84667967281e1ce8770\",\"metadata\":{\"contentType\":\"image/bmp\"},\"base64\":true,\"value\":\"aW1hZ2UzLmJtcA==\"}]",
+      "ignoreArrayOrder" : true,
+      "ignoreExtraElements" : true
+    } ]
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\n  \"result\": null,\n  \"success\": true,\n  \"errors\": [],\n  \"messages\": []\n}\n",
+    "headers" : {
+      "Date" : "Mon, 19 Dec 2022 17:44:17 GMT",
+      "Content-Type" : "application/json; charset=UTF-8",
+      "CF-Ray" : "77c1f1ffaffb004c-WAW",
+      "Cache-Control" : "no-store, no-cache, must-revalidate",
+      "Set-Cookie" : [ "__cflb=0H28vgHxwvgAQtjUGU56Rb8iNWZVUvXhdXjPGAg5ckm; SameSite=Lax; path=/; expires=Mon, 19-Dec-22 20:14:18 GMT; HttpOnly", "__cflb=0H28vgHxwvgAQtjUGU56Rb8iNWZVUvXhdXjPGAg5ckm; SameSite=Lax; path=/; expires=Mon, 19-Dec-22 20:14:18 GMT; HttpOnly", "__cfruid=ae4897bf7528f3efe361b73f778b4339a71ec591-1671471857; path=/; domain=.api.cloudflare.com; HttpOnly; Secure; SameSite=None" ],
+      "Vary" : "Accept-Encoding",
+      "CF-Cache-Status" : "DYNAMIC",
+      "x-envoy-upstream-service-time" : "232",
+      "Server" : "cloudflare"
+    }
+  },
+  "uuid" : "c4c7e92e-7a70-44ca-b0ce-e883df15cde3",
+  "persistent" : true,
+  "insertionIndex" : 3
+}

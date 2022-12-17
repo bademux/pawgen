@@ -5,12 +5,12 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Formatter;
-import java.util.logging.LogRecord;
+import java.util.Optional;
+import java.util.logging.*;
 
 import static java.time.ZoneId.systemDefault;
 import static java.time.temporal.ChronoField.*;
+import static java.util.logging.LogManager.getLogManager;
 
 public final class AppConsoleHandler extends ConsoleHandler {
 
@@ -49,6 +49,13 @@ public final class AppConsoleHandler extends ConsoleHandler {
 				return result.append('\n').toString();
 			}
 		});
+
+		//see form more info jdk.internal.net.http.common.Log.logProp
+		Optional.ofNullable(getLogManager().getProperty(getClass().getName() + ".httpclient"))
+			.map(String::trim)
+			.ifPresent(value -> System.setProperty("jdk.httpclient.HttpClient.log", value));
+
+
 	}
 
 }

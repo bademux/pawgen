@@ -17,7 +17,6 @@ import net.pawet.pawgen.component.system.storage.Resource;
 import net.pawet.pawgen.component.system.storage.Storage;
 import net.pawet.pawgen.component.xml.ArticleParser;
 
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.stream.Stream;

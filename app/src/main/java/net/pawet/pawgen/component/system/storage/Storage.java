@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
+import net.pawet.pawgen.deployer.digest.DigestValidator;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -41,14 +42,14 @@ public class Storage {
 
 	private final Map<Entry<Path, String>, Resource> resourceCache = new ConcurrentHashMap<>();
 	private final Predicate<Path> isAttributeFile;
-	private final Sha1DigestService digestService;
+	private final DigestService digestService;
 	private final Map<String, Path> staticFiles;
 	private final Path contentDir;
 	private final Path outputDir;
 
 	public static Storage create(Stream<Entry<Path, Path>> relativePathPerPath, @NonNull Path contentDir, @NonNull Path outputDir) {
 		var metaService = new MetaService();
-		var digestService = new Sha1DigestService(metaService);
+		var digestService = new DigestService(metaService);
 		try (relativePathPerPath) {
 			var staticFileMap = relativePathPerPath.collect(toMap(e -> asRelativeUri(e.getKey()), Entry::getValue, (relativePath, __) -> {
 				throw new IllegalArgumentException("Multiple static files in static dir for" + relativePath);
@@ -167,8 +168,9 @@ public class Storage {
 		return readOutputDirInternal().map(this::createDigestAwareData);
 	}
 
+	@SneakyThrows
 	private DigestAwareResource createDigestAwareData(Path path) {
-		return DigestAwareResource.of(digestService.load(path), path, outputDir.relativize(path), this);
+		return DigestAwareResource.of(digestService.load(path), outputDir.relativize(path), Files.size(path), () -> read(path));
 	}
 
 	public boolean cleanupOutputDir() {
@@ -203,8 +205,9 @@ public class Storage {
 
 	public boolean assertChecksums() {
 		log.info("Checking sums");
+		var digestValidator = new DigestValidator(digestService::loadDigest);
 		try (Stream<Path> items = readOutputDirInternal()) {
-			return items.map(digestService::assertChecksum).reduce(Boolean::equals).orElse(true);
+			return items.map(digestValidator::assertChecksum).reduce(Boolean::equals).orElse(true);
 		}
 	}
 

@@ -1,34 +1,35 @@
-package net.pawet.pawgen.component.netlify;
+package net.pawet.pawgen.deployer;
 
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.netlify.NetlifyHttpException.NetlifyRateLimitHttpException;
+import net.pawet.pawgen.deployer.deployitem.Content;
+import net.pawet.pawgen.deployer.deployitem.Digest;
+import net.pawet.pawgen.deployer.deployitem.Path;
 
 import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.*;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.Thread.sleep;
+import static java.util.function.Function.identity;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.*;
 import static lombok.AccessLevel.PRIVATE;
 
 @Slf4j
-class NetlifyDeployer {
+public class NetlifyDeployer {
 
 	private static final String DEPLOYMENT_TITLE = "pawgen_deployer";
 	private final NetlifyClient netlifyClient;
 	private final String siteId;
-	private final Retrier retrier = new Retrier(Clock.systemUTC(), Duration.ofSeconds(2), 20);
+	private final Retrier retrier = new Retrier(Duration.ofSeconds(2), 20);
 
 	public NetlifyDeployer(URI url, String accessToken, String siteId) {
 		this.netlifyClient = url == null ? new NetlifyClient(accessToken) : new NetlifyClient(url, accessToken);
@@ -36,8 +37,8 @@ class NetlifyDeployer {
 	}
 
 	@SneakyThrows
-	public final <T extends FileDigest & FileData> void deploy(Collection<T> toBeDeployed) {
-		retrier.deployWithRetry(new Deployer<>(this, toBeDeployed)::deploy);
+	public final <T extends Digest & Content & Path> void deploy(Collection<T> toBeDeployed) {
+		retrier.exec(new Operation<>(this, toBeDeployed)::deploy);
 		log.debug("Deployed {} files", toBeDeployed.size());
 	}
 
@@ -47,7 +48,7 @@ class NetlifyDeployer {
 			.map(d -> d.getString("state"));
 	}
 
-	Optional<String> createDeploy(Collection<? extends FileDigest> values) {
+	<T extends Digest & Path> Optional<String> createDeploy(Collection<T> values) {
 		return netlifyClient.siteDeploy(siteId).createAsync(DEPLOYMENT_TITLE, values).map(obj -> obj.getString("id"));
 	}
 
@@ -66,7 +67,7 @@ class NetlifyDeployer {
 	 * @return true if everything is uploaded successfully
 	 */
 	@SneakyThrows
-	long uploadFiles(String deployId, Collection<? extends FileData> files) {
+	<T extends Content & Path> long uploadFiles(String deployId, Collection<T> files) {
 		var deployOp = netlifyClient.deploy(deployId);
 		return files.stream()
 			.mapToLong(value -> upload(deployOp, value))
@@ -74,7 +75,7 @@ class NetlifyDeployer {
 			.count();
 	}
 
-	private long upload(NetlifyClient.DeployOperation deployOp, FileData value) {
+	private <T extends Content & Path> long upload(NetlifyClient.DeployOperation deployOp, T value) {
 		long size = deployOp.upload(value);
 		log.debug("Uploaded {}Kb", size / 1024);
 		return size;
@@ -105,7 +106,7 @@ class NetlifyDeployer {
 
 @Slf4j
 @AllArgsConstructor(access = PRIVATE)
-final class Deployer<T extends FileDigest & FileData> {
+final class Operation<T extends Digest & Content & Path> {
 
 	private final NetlifyDeployer client;
 	private final Collection<T> files;
@@ -113,37 +114,48 @@ final class Deployer<T extends FileDigest & FileData> {
 
 	private String deployId;
 
-	private static <T extends FileDigest & FileData> Map<String, T> createUnique(Collection<T> files) {
-		return files.stream().collect(toMap(FileDigest::getDigest, Function.identity(), (t, __) -> t));
+	private static <T extends Digest & Content> Map<String, T> createUnique(Collection<T> files) {
+		return files.stream().collect(toMap(Digest::getDigest, identity(), (t, __) -> t));
 	}
 
-	Deployer(NetlifyDeployer client, Collection<T> files) {
-		this(client, files, createUnique(files), null);
+	Operation(NetlifyDeployer client, Collection<T> files) {
+		this(client, files, null);
 	}
 
-	Deployer(NetlifyDeployer client, Collection<T> files, String deployId) {
+	Operation(NetlifyDeployer client, Collection<T> files, String deployId) {
 		this(client, files, createUnique(files), deployId);
 	}
 
-
 	/**
-	 * @return true if everything is uploaded successfully, false if retry
+	 * @throws DeployerHttpException if retry
 	 */
-	boolean deploy() {
-		if (files.isEmpty()) {
-			return true;
+	@SneakyThrows
+	void deploy() throws DeployerHttpException {
+		while (true) {
+			if (files.isEmpty()) {
+				return;
+			}
+			if (deployId == null) {
+				var deployId = client.getLastDeployWithStatus("prepared");
+				if (deployId.isPresent()) { // try to resume
+					this.deployId = deployId.get();
+					if (deployWithState("prepared")) {
+						return;
+					}
+				}
+				if (deployWithState("--init--")) {
+					return;
+				}
+			} else if (client.getDeployState(deployId).map(this::deployWithState).orElseThrow()) {
+				return;
+			}
+			sleep(Duration.ofSeconds(2));
 		}
-		if (deployId != null) {
-			return deployWithState(client.getDeployState(deployId).orElse("unknown"));
-		}
-		var deployId = client.getLastDeployWithStatus("prepared");
-		if (deployId.isPresent()) { // try to resume
-			this.deployId = deployId.get();
-			return deployWithState("prepared");
-		}
-		return deployWithState("--init--");
 	}
 
+	/**
+	 * @return true if deployment process is done, false if needs to be continued
+	 */
 	@SneakyThrows
 	boolean deployWithState(String state) {
 		switch (state) {
@@ -162,10 +174,10 @@ final class Deployer<T extends FileDigest & FileData> {
 				log.debug("Got deployId '{}'", deployId);
 				var requiredFilesFor = client.getRequiredFilesFor(deployId).toList();
 				var files = requiredFilesFor.stream().map(unique::get).filter(Objects::nonNull).collect(toList());
-				if(files.isEmpty()){
-					client.cancelDeploy(deployId);
+				if (files.isEmpty()) {
 					log.info("Closing previous deploy deployId {}, as it was nothing to upload", deployId);
-					return false;
+					client.cancelDeploy(deployId);
+					return false; //we are done here
 				}
 				log.info("Uploading {} files", files.size());
 				log.atTrace().setMessage("Uploading files: {}").addArgument(() -> files.stream().map(Object::toString).collect(joining())).log();
@@ -173,7 +185,7 @@ final class Deployer<T extends FileDigest & FileData> {
 					long filesUploaded = client.uploadFiles(deployId, files);
 					log.info("Uploaded {} files, left: {}", filesUploaded, files.size() - filesUploaded);
 					return filesUploaded == files.size();
-				} catch (NetlifyHttpException e) {
+				} catch (DeployerHttpException e) {
 					log.error("Error while uploading: '{}': attempt to upload: {}", e.getMessage(), files.stream().map(Object::toString).collect(joining(",")));
 					if (e.getHttpStatusCode() == 422) {
 						client.cancelDeploy(deployId);
@@ -181,52 +193,18 @@ final class Deployer<T extends FileDigest & FileData> {
 					throw e;
 				}
 			case "processing":
-			case "preparing": // wait a bit more and retry
+			case "preparing": // wait a bit more
 				log.info("wait until deploy with id '{}' prepared", deployId);
 				return false;
 			case "ready": // already deployed
 				log.info("'{}' already deployed", deployId);
 				return true;
 			case "uploaded":
-				log.info("'{}' uploaded, wait for a while", deployId);
+				log.info("'{}' uploaded, please wait", deployId);
 				return false;
 			default:
 		}
 		throw new IllegalArgumentException(String.format("Unknown state '%s' for deploy with Id '%s'", state, deployId));
-	}
-
-}
-
-@Slf4j
-@RequiredArgsConstructor
-final class Retrier {
-
-	private final Clock clock;
-	private final Duration initialTimeout;
-	private final int maxRetries;
-
-	@SneakyThrows
-	void deployWithRetry(BooleanSupplier deployer) {
-		for (long i = 1, t = initialTimeout.toMillis(); !safeOperation(deployer); i++, t *= 2) {
-			if (i > maxRetries) {
-				throw new IllegalStateException(i + " operations in a row was done, limit reached.");
-			}
-			Thread.sleep(t);
-		}
-	}
-
-	@SneakyThrows
-	private boolean safeOperation(BooleanSupplier deployer) {
-		try {
-			return deployer.getAsBoolean();
-		} catch (NetlifyRateLimitHttpException e) {
-			long delay = clock.millis() - e.getReset();
-			if (delay > 0) {
-				log.info("Requests are rate limited. Waiting {} seconds", delay / 1000);
-				Thread.sleep(delay);
-			}
-			return false;
-		}
 	}
 
 }
