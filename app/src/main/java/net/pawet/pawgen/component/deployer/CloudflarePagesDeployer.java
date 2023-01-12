@@ -18,8 +18,8 @@ class CloudflarePagesDeployer {
 
 	private final CloudflarePagesClient.ProjectOperation projectOp;
 
-	public CloudflarePagesDeployer(URI url, String accessToken, String siteId, String accountId) {
-		this.projectOp = new CloudflarePagesClient(url, accessToken).project(accountId, siteId);
+	public CloudflarePagesDeployer(URI url, String token, String projectName, String accountId) {
+		this.projectOp = new CloudflarePagesClient(url, token).project(accountId, projectName);
 	}
 
 	@SneakyThrows

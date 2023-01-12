@@ -36,7 +36,7 @@ class NetlifyDeployer {
 
 	@SneakyThrows
 	public final <T extends FileDigest & FileData> void deploy(Collection<T> toBeDeployed) {
-		retrier.deployWithRetry(new Deployer<>(this, toBeDeployed)::deploy);
+		retrier.deployWithRetry(new Operation<>(this, toBeDeployed)::deploy);
 		log.debug("Deployed {} files", toBeDeployed.size());
 	}
 
@@ -104,7 +104,7 @@ class NetlifyDeployer {
 
 @Slf4j
 @AllArgsConstructor(access = PRIVATE)
-final class Deployer<T extends FileDigest & FileData> {
+final class Operation<T extends FileDigest & FileData> {
 
 	private final NetlifyDeployer client;
 	private final Collection<T> files;
@@ -116,11 +116,11 @@ final class Deployer<T extends FileDigest & FileData> {
 		return files.stream().collect(toMap(FileDigest::getDigest, Function.identity(), (t, __) -> t));
 	}
 
-	Deployer(NetlifyDeployer client, Collection<T> files) {
+	Operation(NetlifyDeployer client, Collection<T> files) {
 		this(client, files, createUnique(files), null);
 	}
 
-	Deployer(NetlifyDeployer client, Collection<T> files, String deployId) {
+	Operation(NetlifyDeployer client, Collection<T> files, String deployId) {
 		this(client, files, createUnique(files), deployId);
 	}
 

@@ -11,7 +11,7 @@ class NetlifyDeployerSpec extends Specification {
 		given:
 		def data = [new TestFile('/test')]
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, data)
+		def deployer = new Operation(client, data)
 		when:
 		def isSuccess = deployer.deployWithState(state)
 		then:
@@ -29,7 +29,7 @@ class NetlifyDeployerSpec extends Specification {
 		given:
 		def data = [new TestFile('/test')]
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, data, 'deployId')
+		def deployer = new Operation(client, data, 'deployId')
 		when:
 		def isSuccess = deployer.deployWithState(state)
 		then:
@@ -46,7 +46,7 @@ class NetlifyDeployerSpec extends Specification {
 	Should "upload files for #state with no deployId"() {
 		given:
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, [])
+		def deployer = new Operation(client, [])
 		when:
 		def isSuccess = deployer.deployWithState(state)
 		then:
@@ -61,7 +61,7 @@ class NetlifyDeployerSpec extends Specification {
 		given:
 		def data = [new TestFile("/test_file")]
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, data)
+		def deployer = new Operation(client, data)
 		when:
 		def isSuccess = deployer.deployWithState('preparing')
 		then:
@@ -74,7 +74,7 @@ class NetlifyDeployerSpec extends Specification {
 		given:
 		def data = [new TestFile("/test_file")]
 		def client = Mock(NetlifyDeployer)
-		def deployer = new Deployer(client, data)
+		def deployer = new Operation(client, data)
 		when:
 		def isSuccess = deployer.deployWithState('ready')
 		then:
