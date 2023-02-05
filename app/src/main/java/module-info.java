@@ -18,7 +18,7 @@ module pawgen {
 	requires com.twelvemonkeys.imageio;
 	requires com.github.jai_imageio;
 	requires jakarta.json;
-	requires org.glassfish.jakarta.json;
+	requires org.eclipse.parsson;
 	uses jakarta.json.spi.JsonProvider;
 	uses javax.imageio.spi.ImageInputStreamSpi;
 	uses javax.imageio.spi.ImageOutputStreamSpi;
