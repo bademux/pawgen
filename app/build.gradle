@@ -91,30 +91,10 @@ configurations {
 
 }
 
-task downloadLombok() {
-	inputs.property('lombokSrc', 'https://github.com/projectlombok/lombok/files/9745621/lombok-jdk19-20221010.zip')
-	outputs.files file("$buildDir/lombok.zip")
-	doLast {
-		ant.get(src: inputs.properties.lombokSrc, dest: tasks.downloadLombok.outputs.files.singleFile)
-	}
-}
-
-task installLombok(type: Sync, dependsOn: tasks.downloadLombok) { task ->
-	var extractDir = file("${buildDir}/ext-libs")
-	outputs.files fileTree(extractDir) {
-		include "**/*.jar"
-		builtBy task
-	}
-	from zipTree(tasks.downloadLombok.outputs.files.singleFile)
-	into extractDir
-}
-
 dependencies {
 
-	compileOnly files({ tasks.installLombok.outputs.files })
-	annotationProcessor files({ tasks.installLombok.outputs.files })
-//	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
-//	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	implementation project(path: ':twelvemonkeys', configuration: 'moduleJar')
 	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
 	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
@@ -122,11 +102,8 @@ dependencies {
 	implementation group: 'org.glassfish', name: 'jakarta.json', version: jakartajsonVersion, classifier: 'module'
 	implementation group: 'org.slf4j', name: 'slf4j-jdk14', version: slf4jVersion
 
-
-	testCompileOnly files({ tasks.installLombok.outputs.files })
-	testAnnotationProcessor files({ tasks.installLombok.outputs.files })
-//	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
-//	testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 
 	testImplementation enforcedPlatform(group: 'org.spockframework', name: 'spock-bom', version: spockVersion)
 	testImplementation group: 'org.spockframework', name: 'spock-core'
