@@ -1,0 +1,39 @@
+<html>
+<head>
+    <title>Downloader</title>
+</head>
+<body onload="onPageLoad()">
+<div id="downloadStatus">Preparing</div>
+<a id="downloadLink" href="#" hidden="hidden">Download</a>
+<script>
+    function setDownloadStatus(msg) {
+        document.getElementById("downloadStatus").innerHTML = msg
+    }
+
+    function downloadWithUrl(blob, fileName) {
+        const link = document.getElementById("downloadLink");
+        link.href = blob;
+        link.download = fileName;
+        link.click();
+        link.hidden = false
+    }
+
+    function onPartsDownload(blobs, fileName) {
+        setDownloadStatus("Downloaded:")
+        downloadWithUrl(new Blob(blobs), fileName);
+    }
+
+    function download(urls, fileName) {
+        setDownloadStatus(`Downloading ${urls.length} parts. Please wait.`)
+        Promise.all(urls.map(url => fetch(url).then(resp => resp.blob())))
+            .then(blobs => onPartsDownload(blobs, fileName))
+            .catch(err => setDownloadStatus(`Download failed: ${err}`));
+    }
+
+    function onPageLoad() {
+        const params = new URLSearchParams(window.location.search)
+        download(params.get('urls').split(','), params.get('name'))
+    }
+</script>
+</body>
+</html>

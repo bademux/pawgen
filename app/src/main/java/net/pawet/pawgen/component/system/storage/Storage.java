@@ -1,8 +1,6 @@
 package net.pawet.pawgen.component.system.storage;
 
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.deployer.digest.DigestValidator;
@@ -12,6 +10,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.net.URI;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,7 +28,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.*;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toMap;
 import static lombok.AccessLevel.PACKAGE;
 
 @Slf4j
@@ -40,10 +39,11 @@ public class Storage {
 	public static final String ARTICLE_FILENAME_SUFFIX = ".xml";
 	public static final String REDIRECTS_FILE = "_redirects";
 
-	private final Map<Entry<Path, String>, Resource> resourceCache = new ConcurrentHashMap<>();
+	private final Map<CacheKey, Resource> resourceCache = new ConcurrentHashMap<>();
 	private final Predicate<Path> isAttributeFile;
 	private final DigestService digestService;
 	private final Map<String, Path> staticFiles;
+	private final Path userDefinedRedirects;
 	private final Path contentDir;
 	private final Path outputDir;
 
@@ -54,7 +54,8 @@ public class Storage {
 			var staticFileMap = relativePathPerPath.collect(toMap(e -> asRelativeUri(e.getKey()), Entry::getValue, (relativePath, __) -> {
 				throw new IllegalArgumentException("Multiple static files in static dir for" + relativePath);
 			}));
-			return new Storage(metaService::isAttributeFile, digestService, staticFileMap, contentDir, outputDir);
+			Path redirects = staticFileMap.remove(REDIRECTS_FILE);
+			return new Storage(metaService::isAttributeFile, digestService, staticFileMap, redirects, contentDir, outputDir);
 		}
 	}
 
@@ -76,11 +77,11 @@ public class Storage {
 	public Optional<Resource> resource(Path src, String dest) {
 		return Optional.ofNullable(src)
 			.filter(Files::isRegularFile)
-			.map(path -> createResource(path, dest));
+			.map(srcPath -> resourceCache.computeIfAbsent(new CacheKey(dest, srcPath), this::simpleResource));
 	}
 
-	private Resource createResource(Path src, String dest) {
-		return resourceCache.computeIfAbsent(Map.entry(src, dest), path -> new SimpleResource(path.getKey(), resolveOutputDir(dest), this));
+	private Resource simpleResource(CacheKey cacheKey) {
+		return new SimpleResource(cacheKey.src(), cacheKey.relativeDestTo(outputDir), this);
 	}
 
 	@SneakyThrows
@@ -112,8 +113,8 @@ public class Storage {
 
 	public Stream<Resource> staticFiles() {
 		return staticFiles.entrySet().stream()
-			.filter(e -> !REDIRECTS_FILE.equalsIgnoreCase(e.getKey()))
-			.map(e -> createResource(e.getValue(), e.getKey()));
+			.map(entry -> new CacheKey(entry.getKey(), entry.getValue()))
+			.map(this::simpleResource);
 	}
 
 	Path resolveInputDir(String pathStr) {
@@ -130,7 +131,7 @@ public class Storage {
 	}
 
 	@SneakyThrows
-	ReadableByteChannel read(Path path) {
+	SeekableByteChannel read(Path path) {
 		assert path.isAbsolute() : "expecting absolute path";
 		return Files.newByteChannel(path, READ);
 	}
@@ -139,12 +140,6 @@ public class Storage {
 		return read(resolveInputDir(relativeToRoot));
 	}
 
-	Path resolveOutputDir(String pathStr) {
-		if (pathStr.length() > 1 && pathStr.startsWith("/")) {
-			pathStr = pathStr.substring(1);
-		}
-		return outputDir.resolve(pathStr);
-	}
 
 	@SneakyThrows
 	WritableByteChannel write(Path dest) {
@@ -222,7 +217,6 @@ public class Storage {
 	@SneakyThrows
 	public void writeAliases(List<Entry<String, String>> aliases) {
 		Path destRedirects = outputDir.resolve(REDIRECTS_FILE);
-		var userDefinedRedirects = staticFiles.get(REDIRECTS_FILE);
 		try (var writer = newWriter(write(destRedirects), UTF_8)) {
 			if (userDefinedRedirects != null) {
 				writeExistingFile(userDefinedRedirects, writer);
@@ -248,4 +242,11 @@ public class Storage {
 
 }
 
-
+record CacheKey(String dest, Path src) {
+	public Path relativeDestTo(Path outputDir) {
+		if (dest.length() > 1 && dest.startsWith("/")) {
+			return outputDir.resolve(dest.substring(1));
+		}
+		return outputDir.resolve(dest);
+	}
+}
