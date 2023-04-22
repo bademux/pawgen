@@ -25,6 +25,7 @@ import static java.util.stream.Collectors.*;
 @ToString(onlyExplicitlyIncluded = true)
 @Builder
 public final class CliOptions {
+
 	private static final String OUTPUT_DIR = "./public";
 	private static final String TEMPLATES_DIR = "./templates";
 	private static final String STATIC_DIR = "./static";
@@ -35,7 +36,8 @@ public final class CliOptions {
 	private final URI contentUri;
 	@Builder.Default
 	@ToString.Include
-	private final URI outputUri = createUri(System.getProperty("user.dir") + '/' + OUTPUT_DIR);;
+	private final URI outputUri = createUri(System.getProperty("user.dir") + '/' + OUTPUT_DIR);
+	;
 	@Builder.Default
 	@ToString.Include
 	private final URI templatesUri = createUri(System.getProperty("user.dir") + '/' + TEMPLATES_DIR);
@@ -150,6 +152,7 @@ public final class CliOptions {
 			.ifPresent(optionsBuilder::deployerNames);
 		propertyProvider.apply("netlify.url")
 			.map(URI::create)
+			.map(CliOptions::addSlashToResource)
 			.ifPresent(optionsBuilder::netlifyUrl);
 		propertyProvider.apply("netlify.accessToken")
 			.ifPresent(optionsBuilder::netlifyAccessToken);
@@ -157,6 +160,7 @@ public final class CliOptions {
 			.ifPresent(optionsBuilder::netlifySiteId);
 		propertyProvider.apply("cloudflarepages.url")
 			.map(URI::create)
+			.map(CliOptions::addSlashToResource)
 			.ifPresent(optionsBuilder::cloudflarePagesUrl);
 		propertyProvider.apply("cloudflarepages.token")
 			.ifPresent(optionsBuilder::cloudflarePagesToken);
@@ -225,6 +229,11 @@ public final class CliOptions {
 			return new URI("jar:file", uri.getPath() + "!/", uri.getRawQuery());
 		}
 		return uri;
+	}
+
+	private static URI addSlashToResource(URI uri) {
+		String path = uri.getPath();
+		return path.endsWith("/") ? uri : uri.resolve(path + "/");
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})

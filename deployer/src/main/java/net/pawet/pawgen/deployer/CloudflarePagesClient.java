@@ -3,7 +3,9 @@ package net.pawet.pawgen.deployer;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import lombok.*;
+import lombok.NonNull;
+import lombok.SneakyThrows;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.deployer.deployitem.Content;
 import net.pawet.pawgen.deployer.deployitem.Digest;
@@ -11,7 +13,6 @@ import net.pawet.pawgen.deployer.deployitem.Path;
 
 import java.io.*;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest.Builder;
@@ -36,10 +37,9 @@ import static net.pawet.pawgen.deployer.JsonBodyHandler.toJson;
 
 
 @Slf4j
-@RequiredArgsConstructor
 public final class CloudflarePagesClient {
 
-	public static final URI BASE_URL = URI.create("https://api.cloudflare.com/client/v4");
+	public static final URI BASE_URL = URI.create("https://api.cloudflare.com/client/v4/");
 	private final HttpClient client = HttpClient.newBuilder()
 		.followRedirects(NORMAL)
 		.connectTimeout(Duration.ofMinutes(30))
@@ -58,6 +58,14 @@ public final class CloudflarePagesClient {
 		this(BASE_URL, token);
 	}
 
+	public CloudflarePagesClient(@NonNull URI baseUrl, @NonNull String token) {
+		if (!baseUrl.getPath().endsWith("/")) {
+			throw new IllegalArgumentException("uri path have to end with '/' " + baseUrl);
+		}
+		this.baseUrl = baseUrl;
+		this.token = token;
+	}
+
 	private Builder getApiAuthRequestBuilder() {
 		return getRequestBuilder().header("Authorization", "bearer " + token);
 	}
@@ -70,51 +78,49 @@ public final class CloudflarePagesClient {
 		return new ProjectOperation(accountId, projectName);
 	}
 
-	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	public class ProjectOperation {
 
-		@NonNull
-		private final String accountId;
-		@NonNull
-		private final String projectName;
+		private final URI projectUri;
+
+		ProjectOperation(@NonNull String accountId, @NonNull String projectName) {
+			this.projectUri = baseUrl.resolve("accounts/" + accountId + "/pages/projects/" + projectName + "/");
+		}
 
 		public AssetOperation asset() {
 			return new AssetOperation(this::fetchJwt);
 		}
 
 		public DeploymentOperation deployment() {
-			return new DeploymentOperation(accountId, projectName);
+			return new DeploymentOperation(projectUri);
 		}
 
 		@SneakyThrows
 		String fetchJwt() {
-			log.debug("Fetch jwt token for {}/{}", accountId, projectName);
-			var request = getApiAuthRequestBuilder()
-				.uri(uriOf("/accounts/" + accountId + "/pages/projects/" + projectName + "/upload-token"))
-				.GET()
-				.build();
+			log.debug("Fetch jwt token for '{}'", projectUri);
+			var request = getApiAuthRequestBuilder().uri(projectUri.resolve("upload-token")).GET().build();
 			try (var valueStream = client.send(request, bodyHandler).body()) {
 				return valueStream.map(JsonValue::asJsonObject)
 					.findAny()
 					.map(json -> json.getJsonObject("result"))
 					.map(json -> json.getString("jwt"))
-					.orElseThrow(() -> new IllegalArgumentException("Can't login for account: " + accountId + " project: " + projectName));
+					.orElseThrow(() -> new IllegalArgumentException("Can't login for account: " + projectUri));
 			}
 		}
 	}
 
-	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	public class DeploymentOperation {
-		@NonNull
-		private final String accountId;
-		@NonNull
-		private final String projectName;
+
+		private final URI deploymentUri;
+
+		DeploymentOperation(@NonNull URI projectUri) {
+			this.deploymentUri = projectUri.resolve("deployments");
+		}
 
 		@SneakyThrows
 		public <T extends Digest & Path> String create(Collection<T> files, Content redirectsFile) {
 			var body = createFormDataBody(files, redirectsFile);
 			var request = getApiAuthRequestBuilder()
-				.uri(uriOf("/accounts/" + accountId + "/pages/projects/" + projectName + "/deployments"))
+				.uri(deploymentUri)
 				.header("Content-Type", "multipart/form-data; boundary=" + body.getKey())
 				.POST(ofByteArray(body.getValue()))
 				.build();
@@ -129,10 +135,7 @@ public final class CloudflarePagesClient {
 
 		@SneakyThrows
 		public Collection<String> list() {
-			var request = getApiAuthRequestBuilder()
-				.uri(uriOf("/accounts/" + accountId + "/pages/projects/" + projectName + "/deployments"))
-				.GET()
-				.build();
+			var request = getApiAuthRequestBuilder().uri(deploymentUri).GET().build();
 			try (var valueStream = client.send(request, bodyHandler).body()) {
 				return valueStream.map(JsonValue::asJsonObject).findAny()
 					.map(json -> json.getJsonArray("result"))
@@ -145,12 +148,16 @@ public final class CloudflarePagesClient {
 
 	}
 
-	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	public class AssetOperation {
 
 		private final Supplier<String> jwtSupplier;
+		private final URI pagesUri;
 		private volatile String jwt;
 
+		AssetOperation(Supplier<String> jwtSupplier) {
+			this.jwtSupplier = jwtSupplier;
+			pagesUri = baseUrl.resolve("pages/assets/");
+		}
 
 		@SneakyThrows
 		public <T> T refreshToken(Callable<T> operation) {
@@ -179,8 +186,8 @@ public final class CloudflarePagesClient {
 			return refreshToken(() -> missingInternal(digests));
 		}
 
-		Collection<String> missingInternal(Collection<? extends Digest> digests) throws IOException, InterruptedException, URISyntaxException {
-			var request = getJwtAuthRequestBuilder().uri(uriOf("/pages/assets/check-missing"))
+		Collection<String> missingInternal(Collection<? extends Digest> digests) throws IOException, InterruptedException {
+			var request = getJwtAuthRequestBuilder().uri(pagesUri.resolve("check-missing"))
 				.header("Content-Type", "application/json; charset=utf-8")
 				.POST(jsonPublisher(generator -> {
 					generator.writeStartObject();
@@ -207,8 +214,8 @@ public final class CloudflarePagesClient {
 			return refreshToken(() -> upsertInternal(digests));
 		}
 
-		boolean upsertInternal(Collection<? extends Digest> digests) throws URISyntaxException, IOException, InterruptedException {
-			var request = getJwtAuthRequestBuilder().uri(uriOf("/pages/assets/upsert-hashes"))
+		boolean upsertInternal(Collection<? extends Digest> digests) throws IOException, InterruptedException {
+			var request = getJwtAuthRequestBuilder().uri(pagesUri.resolve("upsert-hashes"))
 				.header("Content-Type", "application/json; charset=utf-8")
 				.POST(jsonPublisher(generator -> {
 					generator.writeStartObject();
@@ -233,9 +240,9 @@ public final class CloudflarePagesClient {
 			return refreshToken(() -> uploadInternal(files));
 		}
 
-		<T extends Digest & Content & Path> boolean uploadInternal(Collection<T> files) throws URISyntaxException, IOException, InterruptedException {
+		<T extends Digest & Content & Path> boolean uploadInternal(Collection<T> files) throws IOException, InterruptedException {
 			var request = getJwtAuthRequestBuilder()
-				.uri(uriOf("/pages/assets/upload"))
+				.uri(pagesUri.resolve("upload"))
 				.header("Content-Type", "application/json; charset=utf-8")
 				.POST(jsonPublisher(generator -> {
 					generator.writeStartArray();
@@ -350,10 +357,6 @@ public final class CloudflarePagesClient {
 	}
 
 	public static final Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
-
-	private URI uriOf(String path) throws URISyntaxException {
-		return new URI(baseUrl.getScheme(), null, baseUrl.getHost(), baseUrl.getPort(), baseUrl.getRawPath() + path, null, null);
-	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> HttpResponse.BodySubscriber<T> handleError(HttpResponse.BodyHandler<T> handler, HttpResponse.ResponseInfo resp) {

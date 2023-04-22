@@ -96,7 +96,7 @@ class NetlifyApplicationSpec extends Specification {
 		NetlifyClient.NETLIFY_BASE_URL
 	).start()
 
-	URI netlifyUrl = "http://localhost:$netlifyServer.port".toURI()
+	URI netlifyUrl = "http://localhost:$netlifyServer.port/".toURI()
 	String netlifyAccessToken = getenv().getOrDefault('NETLIFY_ACCESSTOKEN', 'testToken')
 	String netlifySiteAppId = getenv().getOrDefault('NETLIFY_SITEID', 'ffb9e628-4835-4b68-ab2a-5bfdd0b42348')
 

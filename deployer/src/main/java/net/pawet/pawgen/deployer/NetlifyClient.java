@@ -3,7 +3,7 @@ package net.pawet.pawgen.deployer;
 import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
-import lombok.RequiredArgsConstructor;
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.deployer.deployitem.Content;
@@ -12,7 +12,6 @@ import net.pawet.pawgen.deployer.deployitem.Path;
 
 import java.io.ByteArrayInputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.Builder;
@@ -25,13 +24,11 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.net.http.HttpClient.Redirect.NORMAL;
-import static java.net.http.HttpClient.Version.HTTP_1_1;
 import static java.net.http.HttpRequest.BodyPublishers.noBody;
 import static java.net.http.HttpRequest.BodyPublishers.ofInputStream;
 import static java.net.http.HttpRequest.newBuilder;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
-import static lombok.AccessLevel.PRIVATE;
 import static net.pawet.pawgen.deployer.DeployerHttpException.errorResponse;
 import static net.pawet.pawgen.deployer.JsonBodyHandler.jsonPublisher;
 
@@ -41,7 +38,7 @@ import static net.pawet.pawgen.deployer.JsonBodyHandler.jsonPublisher;
 @Slf4j
 public final class NetlifyClient {
 
-	public static final URI NETLIFY_BASE_URL = URI.create("https://api.netlify.com/api/v1");
+	public static final URI NETLIFY_BASE_URL = URI.create("https://api.netlify.com/api/v1/");
 	private final HttpClient client = HttpClient.newBuilder()
 		.followRedirects(NORMAL)
 		.connectTimeout(Duration.ofSeconds(31)) //netlify sets 30s per connection
@@ -56,26 +53,32 @@ public final class NetlifyClient {
 	}
 
 	public NetlifyClient(URI baseUrl, String accessToken) {
+		if (!baseUrl.getPath().endsWith("/")) {
+			throw new IllegalArgumentException("uri path have to end with '/' " + baseUrl);
+		}
 		this.baseUrl = baseUrl;
 		this.requestFactory = newBuilder().header("Authorization", "Bearer " + accessToken).setHeader("User-Agent", "url/7.68.0")::copy;
 	}
 
 	public DeployOperation deploy(String deployId) {
-		return new DeployOperation(requireNonNull(deployId));
+		return new DeployOperation(deployId);
 	}
 
 	public SiteDeployOperation siteDeploy(String siteId) {
-		return new SiteDeployOperation(requireNonNull(siteId));
+		return new SiteDeployOperation(siteId);
 	}
 
-	@RequiredArgsConstructor(access = PRIVATE)
 	public final class DeployOperation {
 
-		private final String deployId;
+		private final URI deployUri;
+
+		private DeployOperation(@NonNull String deployId) {
+			this.deployUri = baseUrl.resolve("deploys/" + deployId + "/");
+		}
 
 		@SneakyThrows
 		public Optional<JsonObject> find() {
-			var request = requestFactory.get().uri(uriOf("/deploys/" + deployId, null)).GET().build();
+			var request = requestFactory.get().uri(deployUri).GET().build();
 			try (var valueStream = client.send(request, bodyHandler).body()) {
 				return valueStream.map(JsonValue::asJsonObject).findAny();
 			}
@@ -83,17 +86,17 @@ public final class NetlifyClient {
 
 		@SneakyThrows
 		public JsonObject cancel() {
-			var request = requestFactory.get().uri(uriOf("/deploys/" + deployId + "/cancel", null)).POST(noBody()).build();
+			var request = requestFactory.get().uri(deployUri.resolve("cancel")).POST(noBody()).build();
 			try (var valueStream = client.send(request, bodyHandler).body()) {
 				return valueStream.map(JsonValue::asJsonObject).findAny().orElseThrow();
 			}
 		}
 
 		@SneakyThrows
-		public <T extends Content & Path>  long upload(T file) {
+		public <T extends Content & Path> long upload(T file) {
 			log.info("Uploading file: {}", file);
 			HttpRequest request = requestFactory.get()
-				.uri(uriOf("/deploys/" + deployId + "/files" + requireNonNull(file).getPath(), null))
+				.uri(deployUri.resolve("files" + requireNonNull(file).getPath()))
 				.header("Content-Type", "application/octet-stream")
 				.PUT(ofInputStream(file::inputStream))
 				.build();
@@ -105,15 +108,18 @@ public final class NetlifyClient {
 		}
 	}
 
-	@RequiredArgsConstructor(access = PRIVATE)
 	public final class SiteDeployOperation {
 
-		private final String siteId;
+		private final URI siteUri;
+
+		private SiteDeployOperation(@NonNull String siteId) {
+			this.siteUri = baseUrl.resolve("sites/" + siteId + "/");
+		}
 
 		@SneakyThrows
 		public <T extends Digest & Path> Optional<JsonObject> createAsync(String title, Collection<T> files) {
 			var request = requestFactory.get()
-				.uri(uriOf("/sites/" + siteId + "/deploys", title == null ? null : "title=" + title))
+				.uri(siteUri.resolve("deploys?title=" + title))
 				.header("Content-Type", "application/json; charset=utf-8")
 				.POST(jsonPublisher(generator -> {
 					generator.writeStartObject();
@@ -136,7 +142,7 @@ public final class NetlifyClient {
 		@SneakyThrows
 		public Stream<JsonObject> list(String state, int resultPerPage) {
 			var request = requestFactory.get()
-				.uri(uriOf("/sites/" + siteId + "/deploys", "per_page=" + resultPerPage + (state == null ? "" : "&state=" + state)))
+				.uri(siteUri.resolve("deploys?per_page=" + resultPerPage + (state == null ? "" : "&state=" + state)))
 				.GET()
 				.build();
 			return client.send(request, bodyHandler).body()
@@ -148,7 +154,7 @@ public final class NetlifyClient {
 		@SneakyThrows
 		public Stream<JsonObject> files() {
 			var request = requestFactory.get()
-				.uri(uriOf("/sites/" + siteId + "/files", null))
+				.uri(siteUri.resolve("files"))
 				.GET()
 				.build();
 			return client.send(request, bodyHandler).body()
@@ -159,16 +165,12 @@ public final class NetlifyClient {
 
 		@SneakyThrows
 		public Optional<JsonObject> find() {
-			var request = requestFactory.get().uri(uriOf("/sites/" + siteId, null)).GET().build();
+			var request = requestFactory.get().uri(siteUri).GET().build();
 			try (var valueStream = client.send(request, bodyHandler).body()) {
 				return valueStream.map(JsonValue::asJsonObject).findAny();
 			}
 		}
 
-	}
-
-	private URI uriOf(String path, String queryParams) throws URISyntaxException {
-		return new URI(baseUrl.getScheme(), null, baseUrl.getHost(), baseUrl.getPort(), baseUrl.getRawPath() + path, queryParams, null);
 	}
 
 	@SuppressWarnings("unchecked")

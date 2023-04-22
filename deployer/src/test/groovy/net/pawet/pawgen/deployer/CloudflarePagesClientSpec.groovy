@@ -49,7 +49,7 @@ class CloudflarePagesClientSpec extends Specification {
             CloudflarePagesClient.BASE_URL
 	).start()
 
-	URI baseUrl = "http://localhost:$server.port".toURI()
+	URI baseUrl = "http://localhost:$server.port/".toURI()
 	String accountId = getenv().getOrDefault('CLOUDFLARE_ACCOUNTID', '8dff37f48370a145196aca7561d61f53')
 	String projectName = getenv().getOrDefault('CLOUDFLARE_PROJECTNAME', 'pawet')
 	String token = getenv().getOrDefault('CLOUDFLARE_TOKEN', 'token')

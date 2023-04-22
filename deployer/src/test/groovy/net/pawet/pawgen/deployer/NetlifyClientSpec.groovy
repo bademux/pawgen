@@ -42,7 +42,7 @@ class NetlifyClientSpec extends Specification {
             NetlifyClient.NETLIFY_BASE_URL
 	).start()
 
-	def client = new NetlifyClient("http://localhost:$wireMock.port".toURI(), getenv().getOrDefault('NETLIFY_ACCESSTOKEN', 'testToken'))
+	def client = new NetlifyClient("http://localhost:$wireMock.port/".toURI(), getenv().getOrDefault('NETLIFY_ACCESSTOKEN', 'testToken'))
 
 	def condition = new PollingConditions(delay: 30, initialDelay: 0.2)
 }

@@ -2,7 +2,7 @@
   "id" : "71353fe2-4a90-496d-9e37-72f1b882f189",
   "name" : "deploys_5fb04ca2f58291d9f179966e",
   "request" : {
-    "url" : "/deploys/5fb04ca2f58291d9f179966e",
+    "url" : "/deploys/5fb04ca2f58291d9f179966e/",
     "method" : "GET"
   },
   "response" : {
