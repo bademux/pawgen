@@ -48,6 +48,7 @@ application {
 
 run {
 	enableAssertions = true
+	environment('LC_ALL', 'en_US.UTF-8')
 	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '--enable-preview']
 	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
 }
