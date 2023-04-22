@@ -6,7 +6,6 @@ import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
-import net.pawet.pawgen.component.system.storage.ImageResource;
 import net.pawet.pawgen.component.system.storage.Resource;
 import net.pawet.pawgen.component.system.storage.Storage;
 
@@ -69,7 +68,7 @@ public final class ResourceProcessor implements Function<ResourceProcessor.Proce
 			case "img" -> Optional.ofNullable(attributes.get("src"))
 				.map(this::handleLink)
 				.map(category::resolve)
-				.flatMap(this::imageResource)
+				.flatMap(storage::resource)
 				.map(resource -> processableImageFactory.create(resource, attributes))
 				.map(processable -> measured(processable, imgProcessingCounter::accumulate));
 			case "a" -> Optional.ofNullable(attributes.get("href"))
@@ -96,10 +95,6 @@ public final class ResourceProcessor implements Function<ResourceProcessor.Proce
 			resource.transfer();
 			return attributes;
 		};
-	}
-
-	private Optional<ImageResource> imageResource(String rootRelativePath) {
-		return storage.resource(rootRelativePath).map(simpleResource -> ImageResource.of(simpleResource, rootRelativePath));
 	}
 
 	public Duration getImageProcessingTime() {

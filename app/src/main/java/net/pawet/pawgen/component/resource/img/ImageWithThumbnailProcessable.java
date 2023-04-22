@@ -2,7 +2,7 @@ package net.pawet.pawgen.component.resource.img;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.system.storage.ImageResource;
+import net.pawet.pawgen.component.system.storage.Resource;
 
 import javax.imageio.*;
 import javax.imageio.metadata.IIOMetadata;
@@ -27,7 +27,7 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 
 
 	@EqualsAndHashCode.Include
-	private final ImageResource resource;
+	private final Resource resource;
 	@ToString.Include
 	private final Map<String, String> attributes;
 	private final Consumer<BufferedImage> watermarkFilter;
@@ -74,7 +74,7 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 			return new Dimension(widthAttr, heightAttr);
 		}
 		if (widthAttr == null && heightAttr == null) {
-			return new Dimension(width,height);
+			return new Dimension(width, height);
 		}
 		if (widthAttr != null) {
 			return new Dimension(widthAttr, calcDimension(width, height, widthAttr));
@@ -128,7 +128,7 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 			watermarkFilter.accept(image);
 			writeImage(image, formatName, out);
 		} catch (Exception e) {
-			if(e instanceof FileAlreadyExistsException ef) {
+			if (e instanceof FileAlreadyExistsException ef) {
 				log.trace("File already exists '{}' skipping '{}'", this, ef.getFile());
 				return;
 			}
@@ -227,11 +227,11 @@ final class ImageWithThumbnailProcessable implements Supplier<Map<String, String
 	}
 
 	private Entry<String, BufferedImage> read(Object channel) throws IOException {
-		try (var iis =  requireNonNull(ImageIO.createImageInputStream(channel))) {
+		try (var iis = requireNonNull(ImageIO.createImageInputStream(channel))) {
 			@Cleanup("dispose") var reader = getImageReaderBy(iis);
 			reader.setInput(iis, true, true);
-			log.debug("Reading image {} with format {}", resource.getSrc(), reader.getFormatName());
-			BufferedImage image = reader.read(0, reader.getDefaultReadParam());
+			log.debug("Reading '{}' image {}", reader.getFormatName(), resource);
+			var image = reader.read(0, reader.getDefaultReadParam());
 			return Map.entry(reader.getFormatName(), image);
 		}
 	}

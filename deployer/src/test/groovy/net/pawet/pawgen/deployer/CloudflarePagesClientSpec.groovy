@@ -37,7 +37,7 @@ class CloudflarePagesClientSpec extends Specification {
 		then:
 		deployment.list().contains(id) == true
 		and:
-		asset.upsert(files.collect({it.digest})) != false
+		asset.upsert(files) != false
 	}
 
 	@AutoCleanup
