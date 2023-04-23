@@ -2,7 +2,7 @@ plugins {
 	id 'application'
 	id 'groovy'
 	id 'org.gradlex.extra-java-module-info' version '1.1'
-	id 'org.graalvm.buildtools.native' version '0.9.16'
+	id 'org.graalvm.buildtools.native' version '0.9.21'
 }
 
 var generatedDir = file("$buildDir/generated/src/java")
@@ -67,6 +67,8 @@ graalvmNative {
 	}
 	binaries {
 		main {
+			//https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#configuration-toolchains
+			toolchainDetection = true
 			// Main options
 			debug = true // Determines if debug info should be generated, defaults to false
 			verbose = true // Add verbose output, defaults to false
