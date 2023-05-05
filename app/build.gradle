@@ -2,7 +2,6 @@ plugins {
 	id 'application'
 	id 'groovy'
 	id 'org.gradlex.extra-java-module-info' version '1.1'
-	id 'org.graalvm.buildtools.native' version '0.9.21'
 }
 
 var generatedDir = file("$buildDir/generated/src/java")
@@ -48,7 +47,6 @@ application {
 
 run {
 	enableAssertions = true
-	environment('LC_ALL', 'en_US.UTF-8')
 	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '--enable-preview']
 	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
 }
@@ -56,29 +54,6 @@ run {
 jar {
 	manifest {
 		attributes = ['Main-Class': application.mainClass.get(), 'Version': project.version]
-	}
-}
-
-graalvmNative {
-	toolchainDetection = true
-	testSupport = false
-	metadataRepository {
-		enabled = true
-	}
-	binaries {
-		main {
-			//https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#configuration-toolchains
-			toolchainDetection = true
-			// Main options
-			debug = true // Determines if debug info should be generated, defaults to false
-			verbose = true // Add verbose output, defaults to false
-			fallback = false // Sets the fallback mode of native-image, defaults to false
-			quickBuild = false
-			buildArgs '--install-exit-handlers', '--native-image-info', '--report-unsupported-elements-at-runtime', '--initialize-at-run-time=net.pawet.pawgen.LoggingConfig'
-			runtimeArgs '--help' // Passes '--help' to built image, during "nativeRun" task
-			// Development options
-			agent.enabled = false // Enables the reflection agent. Can be also set on command line using '-Pagent'
-		}
 	}
 }
 
