@@ -1,0 +1,202 @@
+//TODO: use directly when JPMS will be impl
+buildscript {
+	repositories {
+		maven {
+			url 'https://plugins.gradle.org/m2/'
+		}
+	}
+	dependencies {
+		classpath 'org.gradlex:extra-java-module-info:1.4'
+	}
+}
+
+//TODO: https://github.com/spullara/mustache.java/issues/289
+project(':libs:mustache') {
+	apply plugin: 'java'
+	apply plugin: 'org.gradlex.extra-java-module-info'
+
+	configurations {
+		moduleJar {
+			canBeConsumed = true
+			canBeResolved = false
+		}
+	}
+
+	version mustacheVersion
+
+	dependencies {
+		implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
+	}
+
+	extraJavaModuleInfo {
+		failOnMissingModuleInfo = true
+		module('com.github.spullara.mustache.java:compiler', 'com.github.mustachejava') {
+			requiresStatic 'java.logging'
+
+			exports 'com.github.mustachejava'
+			exports 'com.github.mustachejava.reflect'
+			exports 'com.github.mustachejava.util'
+		}
+	}
+	artifacts {
+		moduleJar configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+			.find({ it.moduleVersion.id.name == 'compiler' })
+			.file
+	}
+
+}
+
+//TODO: https://github.com/vsch/flexmark-java/issues/571
+project(':libs:flexmark') {
+	apply plugin: 'java'
+	apply plugin: 'org.gradlex.extra-java-module-info'
+
+	configurations {
+		moduleJar {
+			canBeConsumed = true
+			canBeResolved = false
+		}
+	}
+	version flexmarkVersion
+
+	dependencies {
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-yaml-front-matter', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-attributes', version: flexmarkVersion
+//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-tables', version: flexmarkVersion
+//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-autolink', version: flexmarkVersion
+//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-anchorlink', version: flexmarkVersion
+//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-typographic', version: flexmarkVersion
+//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-footnotes', version: flexmarkVersion
+//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-enumerated-reference', version: flexmarkVersion
+//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-aside', version: flexmarkVersion
+//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-toc', version: flexmarkVersion
+	}
+
+
+	extraJavaModuleInfo {
+		failOnMissingModuleInfo = true
+		module('com.vladsch.flexmark:flexmark', 'flexmark') {
+			mergeJar('com.vladsch.flexmark:flexmark-util')
+			mergeJar('com.vladsch.flexmark:flexmark-util-format')
+			mergeJar('com.vladsch.flexmark:flexmark-util-ast')
+			mergeJar('com.vladsch.flexmark:flexmark-util-builder')
+			mergeJar('com.vladsch.flexmark:flexmark-util-dependency')
+			mergeJar('com.vladsch.flexmark:flexmark-util-html')
+			mergeJar('com.vladsch.flexmark:flexmark-util-options')
+			mergeJar('com.vladsch.flexmark:flexmark-util-sequence')
+			mergeJar('com.vladsch.flexmark:flexmark-util-collection')
+			mergeJar('com.vladsch.flexmark:flexmark-util-data')
+			mergeJar('com.vladsch.flexmark:flexmark-util-misc')
+			mergeJar('com.vladsch.flexmark:flexmark-util-visitor')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-yaml-front-matter')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-attributes')
+
+			exports 'com.vladsch.flexmark.ext.attributes'
+			exports 'com.vladsch.flexmark.ext.yaml.front.matter'
+			exports 'com.vladsch.flexmark.html'
+			exports 'com.vladsch.flexmark.parser'
+			exports 'com.vladsch.flexmark.util.misc'
+		}
+	}
+
+	artifacts {
+		moduleJar configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+			.find({ it.moduleVersion.id.name == 'flexmark' })
+			.file
+	}
+
+}
+
+//TODO: https://github.com/haraldk/TwelveMonkeys/issues/292
+project(':libs:twelvemonkeys') {
+	apply plugin: 'java'
+	apply plugin: 'org.gradlex.extra-java-module-info'
+
+	configurations {
+		moduleJar {
+			canBeConsumed = true
+			canBeResolved = false
+		}
+	}
+	version twelvemonkeysVersion
+
+	dependencies {
+		implementation platform(group: 'com.twelvemonkeys.bom', name: 'bom', version: twelvemonkeysVersion)
+		implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-jpeg'
+		implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-webp'
+		implementation group: 'com.twelvemonkeys.imageio', name: 'imageio-tiff'
+	}
+
+	extraJavaModuleInfo {
+		failOnMissingModuleInfo = true
+		module('com.twelvemonkeys.imageio:imageio-core', 'com.twelvemonkeys.imageio') {
+			mergeJar 'com.twelvemonkeys.common:common-image'
+			mergeJar 'com.twelvemonkeys.common:common-io'
+			mergeJar 'com.twelvemonkeys.common:common-lang'
+			mergeJar 'com.twelvemonkeys.imageio:imageio-metadata'
+			mergeJar 'com.twelvemonkeys.imageio:imageio-jpeg'
+			mergeJar 'com.twelvemonkeys.imageio:imageio-webp'
+			mergeJar 'com.twelvemonkeys.imageio:imageio-tiff'
+
+			requiresStatic 'java.desktop'
+
+			exports 'com.twelvemonkeys.imageio.stream'
+			exports 'com.twelvemonkeys.imageio.color'
+			exports 'com.twelvemonkeys.imageio.plugins.jpeg'
+			exports 'com.twelvemonkeys.imageio.plugins.webp'
+			exports 'com.twelvemonkeys.imageio.plugins.tiff'
+		}
+	}
+
+	artifacts {
+		moduleJar configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+			.find({ it.moduleVersion.id.name == 'imageio-core' })
+			.file
+	}
+
+}
+
+
+project(':libs:jai') {
+	apply plugin: 'java'
+	apply plugin: 'org.gradlex.extra-java-module-info'
+
+	configurations {
+		moduleJar {
+			canBeConsumed = true
+			canBeResolved = false
+		}
+	}
+	version jaiVersion
+
+	dependencies {
+		implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
+	}
+
+	extraJavaModuleInfo {
+		failOnMissingModuleInfo = true
+		module('com.github.jai-imageio:jai-imageio-core', 'com.github.jai_imageio') {
+			requiresStatic 'java.desktop'
+
+			exports 'com.github.jaiimageio.impl.stream'
+			exports 'com.github.jaiimageio.impl.plugins.wbmp'
+			exports 'com.github.jaiimageio.impl.plugins.bmp'
+			exports 'com.github.jaiimageio.impl.plugins.gif'
+			exports 'com.github.jaiimageio.impl.plugins.pcx'
+			exports 'com.github.jaiimageio.impl.plugins.pnm'
+			exports 'com.github.jaiimageio.impl.plugins.raw'
+
+			//use from twelvemonkeys
+			ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageReaderSpi'
+			ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageWriterSpi'
+		}
+	}
+
+	artifacts {
+		moduleJar configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+			.find({ it.moduleVersion.id.name == 'jai-imageio-core' })
+			.file
+	}
+
+}

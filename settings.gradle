@@ -8,6 +8,8 @@ rootProject.name = 'pawgen'
 
 include ':app'
 include ':deployer'
-include ':twelvemonkeys'
-include ':flexmark'
+include ':libs:twelvemonkeys'
+include ':libs:flexmark'
+include ':libs:jai'
+include ':libs:mustache'
 

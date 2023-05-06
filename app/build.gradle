@@ -47,6 +47,7 @@ application {
 
 run {
 	enableAssertions = true
+	environment('LC_ALL', 'en_US.UTF-8')
 	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '--enable-preview']
 	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
 }
@@ -73,11 +74,11 @@ dependencies {
 
 	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
-	implementation project(path: ':twelvemonkeys', configuration: 'moduleJar')
-	implementation project(path: ':flexmark', configuration: 'moduleJar')
+	implementation project(path: ':libs:twelvemonkeys', configuration: 'moduleJar')
+	implementation project(path: ':libs:flexmark', configuration: 'moduleJar')
+	implementation project(path: ':libs:mustache', configuration: 'moduleJar')
+	implementation project(path: ':libs:jai', configuration: 'moduleJar')
 	implementation project(path: ':deployer')
-	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
-	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
 	implementation group: 'org.eclipse.parsson', name: 'parsson', version: parssonVersion
 	implementation group: 'org.slf4j', name: 'slf4j-jdk14', version: slf4jVersion
 
@@ -95,40 +96,6 @@ dependencies {
 
 extraJavaModuleInfo {
 	failOnMissingModuleInfo = true
-	module('com.github.spullara.mustache.java:compiler', 'com.github.mustachejava') {
-		requiresStatic 'java.logging'
-
-		exports 'com.github.mustachejava'
-		exports 'com.github.mustachejava.reflect'
-		exports 'com.github.mustachejava.util'
-	}
-
-	module("twelvemonkeys-$twelvemonkeysVersion-all.jar", 'com.twelvemonkeys.imageio') {
-		requiresStatic 'java.desktop'
-
-		exports 'com.twelvemonkeys.imageio.stream'
-		exports 'com.twelvemonkeys.imageio.color'
-		exports 'com.twelvemonkeys.imageio.plugins.jpeg'
-		exports 'com.twelvemonkeys.imageio.plugins.webp'
-		exports 'com.twelvemonkeys.imageio.plugins.tiff'
-	}
-
-	module('com.github.jai-imageio:jai-imageio-core', 'com.github.jai_imageio') {
-		requiresStatic 'java.desktop'
-
-		exports 'com.github.jaiimageio.impl.stream'
-		exports 'com.github.jaiimageio.impl.plugins.wbmp'
-		exports 'com.github.jaiimageio.impl.plugins.bmp'
-		exports 'com.github.jaiimageio.impl.plugins.gif'
-		exports 'com.github.jaiimageio.impl.plugins.pcx'
-		exports 'com.github.jaiimageio.impl.plugins.pnm'
-		exports 'com.github.jaiimageio.impl.plugins.raw'
-
-		//use from twelvemonkeys
-		ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageReaderSpi'
-		ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageWriterSpi'
-	}
-
 }
 
 task jlink(type: Exec, dependsOn: jar) {
