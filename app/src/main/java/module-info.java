@@ -16,6 +16,7 @@ module pawgen {
 	requires com.github.mustachejava;
 	requires com.github.jai_imageio;
 	requires org.eclipse.parsson;
+	requires flexmark;
 
 	uses jakarta.json.spi.JsonProvider;
 	uses javax.imageio.spi.ImageInputStreamSpi;

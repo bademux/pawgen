@@ -1,7 +1,7 @@
 plugins {
 	id 'application'
 	id 'groovy'
-	id 'org.gradlex.extra-java-module-info' version '1.1'
+	id 'org.gradlex.extra-java-module-info' version '1.4'
 }
 
 var generatedDir = file("$buildDir/generated/src/java")
@@ -74,6 +74,7 @@ dependencies {
 	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	implementation project(path: ':twelvemonkeys', configuration: 'moduleJar')
+	implementation project(path: ':flexmark', configuration: 'moduleJar')
 	implementation project(path: ':deployer')
 	implementation group: 'com.github.jai-imageio', name: 'jai-imageio-core', version: jaiVersion
 	implementation group: 'com.github.spullara.mustache.java', name: 'compiler', version: mustacheVersion
@@ -127,6 +128,7 @@ extraJavaModuleInfo {
 		ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageReaderSpi'
 		ignoreServiceProvider 'com.github.jaiimageio.impl.plugins.tiff.TIFFImageWriterSpi'
 	}
+
 }
 
 task jlink(type: Exec, dependsOn: jar) {

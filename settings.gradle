@@ -9,3 +9,5 @@ rootProject.name = 'pawgen'
 include ':app'
 include ':deployer'
 include ':twelvemonkeys'
+include ':flexmark'
+
