@@ -94,10 +94,15 @@ project(':libs:flexmark') {
 
 			exports 'com.vladsch.flexmark.ext.attributes'
 			exports 'com.vladsch.flexmark.ext.yaml.front.matter'
+			exports 'com.vladsch.flexmark.util.html'
+			exports 'com.vladsch.flexmark.util.sequence'
 			exports 'com.vladsch.flexmark.util.ast'
+			exports 'com.vladsch.flexmark.util.data'
+			exports 'com.vladsch.flexmark.ast'
 			exports 'com.vladsch.flexmark.html'
 			exports 'com.vladsch.flexmark.html.renderer'
 			exports 'com.vladsch.flexmark.parser'
+			exports 'com.vladsch.flexmark.parser.block'
 			exports 'com.vladsch.flexmark.util.misc'
 		}
 	}
