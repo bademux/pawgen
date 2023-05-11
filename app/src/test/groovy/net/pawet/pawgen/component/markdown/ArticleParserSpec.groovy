@@ -1,7 +1,6 @@
 package net.pawet.pawgen.component.markdown
 
 import net.pawet.pawgen.component.Category
-import net.pawet.pawgen.component.resource.ResourceProcessor
 import spock.lang.Specification
 
 import java.lang.Void as Should
@@ -11,7 +10,7 @@ class ArticleParserSpec extends Specification {
 
 	Should 'read content'() {
 		given:
-		var parser = new ArticleParser(ResourceProcessor.ProcessingItem::attributes)
+		var parser = new ArticleParser({ c, a -> a }, { c, a -> a })
 		var data = parser.parseToDocument(Channels.newChannel(new ByteArrayInputStream('''
 ---
 test: value1

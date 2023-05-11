@@ -5,7 +5,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
-import net.pawet.pawgen.component.resource.ResourceProcessor.ProcessingItem;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
 
 import javax.xml.stream.XMLStreamException;
@@ -18,7 +17,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import static java.util.function.Predicate.not;
 import static java.util.stream.StreamSupport.stream;
@@ -27,7 +26,8 @@ import static java.util.stream.StreamSupport.stream;
 @RequiredArgsConstructor
 public final class ArticleParser {
 
-	private final Function<ProcessingItem, Map<String, String>> resourceFactory;
+	private final BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor;
+	private final BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor;
 
 	@SneakyThrows
 	public Article parse(ArticleResource readable) {
@@ -87,7 +87,7 @@ public final class ArticleParser {
 			.filter(not(String::isBlank))
 			.map(ArticleParser::parseDate)
 			.orElse(null);
-		String file =attrs.stream()
+		String file = attrs.stream()
 			.filter(attr1 -> "file".equalsIgnoreCase(attr1.getName().getLocalPart()))
 			.findFirst()
 			.map(Attribute::getValue)
@@ -100,7 +100,12 @@ public final class ArticleParser {
 			.filter(not(String::isBlank))
 			.orElse("article");
 		Category category = resource.getCategory();
-		var contentParser = new ContentParser((n, attrs1) -> resourceFactory.apply(new ProcessingItem(n, category, attrs1)));
+		var contentParser = new ContentParser((t, attrs1) -> switch (t) {
+			case "img" -> imageResourceProcessor.apply(category, attrs1);
+			case "a" -> linkResourceProcessor.apply(category, attrs1);
+			default -> Map.of();
+		}
+		);
 		return Article.of(resource, () -> contentParser.read(resource.readable()),
 			type, lang, title,
 			author, date, source,

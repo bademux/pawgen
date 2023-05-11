@@ -11,15 +11,11 @@ import com.vladsch.flexmark.html.IndependentAttributeProviderFactory;
 import com.vladsch.flexmark.html.renderer.AttributablePart;
 import com.vladsch.flexmark.html.renderer.LinkResolverContext;
 import com.vladsch.flexmark.parser.Parser;
-import com.vladsch.flexmark.parser.PostProcessor;
-import com.vladsch.flexmark.parser.block.DocumentPostProcessorFactory;
-import com.vladsch.flexmark.parser.block.NodePostProcessor;
-import com.vladsch.flexmark.parser.block.NodePostProcessorFactory;
 import com.vladsch.flexmark.util.ast.Document;
 import com.vladsch.flexmark.util.ast.Node;
-import com.vladsch.flexmark.util.ast.NodeTracker;
 import com.vladsch.flexmark.util.data.DataKey;
 import com.vladsch.flexmark.util.data.NullableDataKey;
+import com.vladsch.flexmark.util.html.Attribute;
 import com.vladsch.flexmark.util.html.MutableAttributes;
 import com.vladsch.flexmark.util.misc.Extension;
 import lombok.NonNull;
@@ -28,7 +24,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
-import net.pawet.pawgen.component.resource.ResourceProcessor;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
 
 import java.io.IOException;
@@ -38,22 +33,20 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 @RequiredArgsConstructor
 public class ArticleParser {
 
-	private static final List<? extends Extension> EXTENSIONS = List.of(
-		YamlFrontMatterExtension.create(),
-		AttributesExtension.create()
-	);
+	private static final List<? extends Extension> EXTENSIONS = List.of(YamlFrontMatterExtension.create(), AttributesExtension.create());
 
 	private final Parser parser = Parser.builder().extensions(EXTENSIONS).build();
 	private final HtmlRenderer renderer = HtmlRenderer.builder().extensions(EXTENSIONS)
@@ -65,20 +58,32 @@ public class ArticleParser {
 		})
 		.build();
 
-	private final Function<ResourceProcessor.ProcessingItem, Map<String, String>> resourceFactory;
+	private final BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor;
+	private final BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor;
 
-	private void attributeProviderSetAttributes(Node node, AttributablePart part, MutableAttributes attributes) {
-		handleAttributes(node, CATEGORY_DATA_KEY.get(node.getDocument())).forEach(attributes::replaceValue);
-	}
-
-	private Map<String, String> handleAttributes(Node node, Category category) {
-		if (node instanceof Image img) {
-			return resourceFactory.apply(new ResourceProcessor.ProcessingItem("img", category, Map.of("src", img.getUrl().toStringOrNull())));
-		} else if (node instanceof LinkNodeBase ln) {
-			return resourceFactory.apply(new ResourceProcessor.ProcessingItem("a", category, Map.of("href", ln.getUrl().toStringOrNull())));
+	private void attributeProviderSetAttributes(Node node, AttributablePart __, MutableAttributes attributes) {
+		if (node instanceof Image) {
+			handle(imageResourceProcessor, node, attributes);
+		} else if (node instanceof LinkNodeBase) {
+			handle(linkResourceProcessor, node, attributes);
 		}
-		return Map.of();
 	}
+
+	private void handle(BiFunction<Category, Map<String, String>, Map<String, String>> resourceProcessor, Node node, MutableAttributes attributes) {
+		var attrs = attributes.values().stream().collect(toMap(Attribute::getName, Attribute::getValue));
+		Category category = CATEGORY_DATA_KEY.get(node.getDocument());
+		resourceProcessor.apply(category, attrs).forEach(attributes::replaceValue);
+	}
+
+	private static final NullableDataKey<Category> CATEGORY_DATA_KEY = new NullableDataKey<>("category");
+	private static final NullableDataKey<String> LANG_DATA_KEY = new NullableDataKey<>("language");
+	private static final DataKey<String> TYPE_DATA_KEY = new DataKey<>("type", "article");
+	private static final NullableDataKey<String> TITLE_DATA_KEY = new NullableDataKey<>("title");
+	private static final NullableDataKey<String> AUTHOR_DATA_KEY = new NullableDataKey<>("author");
+	private static final NullableDataKey<ZonedDateTime> DATE_DATA_KEY = new NullableDataKey<>("date");
+	private static final NullableDataKey<String> SOURCE_DATA_KEY = new NullableDataKey<>("source");
+	private static final NullableDataKey<String> FILE_DATA_KEY = new NullableDataKey<>("file");
+	private static final DataKey<List<String>> ALIASES_DATA_KEY = new DataKey<>("aliases", List.of());
 
 	@SneakyThrows
 	public Article parse(ArticleResource resource) {
@@ -98,16 +103,6 @@ public class ArticleParser {
 		visitor.visit(node);
 		return visitor.getData();
 	}
-
-	public static final NullableDataKey<Category> CATEGORY_DATA_KEY = new NullableDataKey<>("category");
-	public static final NullableDataKey<String> LANG_DATA_KEY = new NullableDataKey<>("language");
-	public static final DataKey<String> TYPE_DATA_KEY = new DataKey<>("type", "article");
-	public static final NullableDataKey<String> TITLE_DATA_KEY = new NullableDataKey<>("title");
-	public static final NullableDataKey<String> AUTHOR_DATA_KEY = new NullableDataKey<>("author");
-	public static final NullableDataKey<ZonedDateTime> DATE_DATA_KEY = new NullableDataKey<>("date");
-	public static final NullableDataKey<String> SOURCE_DATA_KEY = new NullableDataKey<>("source");
-	public static final NullableDataKey<String> FILE_DATA_KEY = new NullableDataKey<>("file");
-	public static final DataKey<List<String>> ALIASES_DATA_KEY = new DataKey<>("aliases", List.of());
 
 	final Document parseToDocument(@NonNull ReadableByteChannel readable, @NonNull Category category, String lang) throws IOException {
 		var document = parseToDocument(readable);
@@ -132,8 +127,6 @@ public class ArticleParser {
 			.distinct()
 			.toList());
 		return document;
-
-
 	}
 
 	private Document parseToDocument(ReadableByteChannel readable) throws IOException {
