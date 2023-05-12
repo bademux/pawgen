@@ -15,13 +15,10 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static lombok.AccessLevel.PROTECTED;
 import static net.pawet.pawgen.component.system.storage.Storage.ARTICLE_FILENAME_PREFIX;
-import static net.pawet.pawgen.component.system.storage.Storage.ARTICLE_FILENAME_SUFFIX;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
@@ -38,11 +35,17 @@ public final class ArticleResource implements ReadableResource {
 	final Path srcPath;
 	final Storage storage;
 
-	public String getLanguage(){
+	public String getFormat() {
+		String fileName = srcPath.getFileName().toString();
+		int start = fileName.lastIndexOf('.');
+		return fileName.substring(start + 1).toLowerCase();
+	}
+
+	public String getLanguage() {
 		String fileName = srcPath.getFileName().toString();
 		int start = ARTICLE_FILENAME_PREFIX.length();
-		int end = fileName.indexOf(ARTICLE_FILENAME_SUFFIX);
-		if(start >= end) {
+		int end = fileName.lastIndexOf('.');
+		if (start >= end) {
 			throw new IllegalStateException("File has no language in filename: " + srcPath);
 		}
 		return fileName.substring(start, end);
@@ -58,7 +61,7 @@ public final class ArticleResource implements ReadableResource {
 	}
 
 	public WritableByteChannel writableFor(String title) {
-		return storage.resource(srcPath, createUrl( category,  title)).orElseThrow().writable();
+		return storage.resource(srcPath, createUrl(category, title)).orElseThrow().writable();
 	}
 
 	public String urlFor(String title) {

@@ -10,7 +10,7 @@ class ArticleParserSpec extends Specification {
 
 	Should 'read content'() {
 		given:
-		var parser = new ArticleParser({ c, a -> a }, { c, a -> a })
+		var parser = ArticleParser.of({ c, a -> a }, { c, a -> a })
 		var data = parser.parseToDocument(Channels.newChannel(new ByteArrayInputStream('''
 ---
 test: value1
@@ -19,11 +19,12 @@ test: value1
 [Link text Here](https://link-url-here.org)
 '''.bytes)), Category.ROOT, null)
 		when:
-		var content = parser.readContent(data)
+		var content = parser.render(data)
 		then:
 		content.toString() == '''\
 <p><img src="Isolated.png" alt="alt text" title="Title" />
 <a href="https://link-url-here.org">Link text Here</a></p>
+
 '''
 	}
 

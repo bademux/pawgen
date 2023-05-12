@@ -63,14 +63,9 @@ project(':libs:flexmark') {
 		implementation group: 'com.vladsch.flexmark', name: 'flexmark', version: flexmarkVersion
 		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-yaml-front-matter', version: flexmarkVersion
 		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-attributes', version: flexmarkVersion
-//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-tables', version: flexmarkVersion
-//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-autolink', version: flexmarkVersion
-//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-anchorlink', version: flexmarkVersion
-//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-typographic', version: flexmarkVersion
-//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-footnotes', version: flexmarkVersion
-//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-enumerated-reference', version: flexmarkVersion
-//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-aside', version: flexmarkVersion
-//	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-toc', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-html2md-converter', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-tables', version: flexmarkVersion
+	implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-emoji', version: flexmarkVersion
 	}
 
 
@@ -91,6 +86,14 @@ project(':libs:flexmark') {
 			mergeJar('com.vladsch.flexmark:flexmark-util-visitor')
 			mergeJar('com.vladsch.flexmark:flexmark-ext-yaml-front-matter')
 			mergeJar('com.vladsch.flexmark:flexmark-ext-attributes')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-tables')
+			mergeJar('com.vladsch.flexmark:flexmark-html2md-converter')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-emoji')
+			mergeJar('com.vladsch.flexmark:flexmark-jira-converter')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-gfm-strikethrough')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-wikilink')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-ins')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-superscript')
 
 			exports 'com.vladsch.flexmark.ext.attributes'
 			exports 'com.vladsch.flexmark.ext.yaml.front.matter'

@@ -36,7 +36,8 @@ import static lombok.AccessLevel.PACKAGE;
 public class Storage {
 
 	public static final String ARTICLE_FILENAME_PREFIX = "index.";
-	public static final String ARTICLE_FILENAME_SUFFIX = ".xml";
+	public static final String ARTICLE_FILENAME_XML_SUFFIX = ".xml";
+	public static final String ARTICLE_FILENAME_MD_SUFFIX = ".md";
 	public static final String REDIRECTS_FILE = "_redirects";
 
 	private final Map<CacheKey, Resource> resourceCache = new ConcurrentHashMap<>();
@@ -107,7 +108,7 @@ public class Storage {
 			.filter(Files::isRegularFile)
 			.filter(path -> {
 				String name = path.getFileName().toString();
-				return name.startsWith(ARTICLE_FILENAME_PREFIX) && name.endsWith(ARTICLE_FILENAME_SUFFIX);
+				return name.startsWith(ARTICLE_FILENAME_PREFIX) && (name.endsWith(ARTICLE_FILENAME_XML_SUFFIX) || name.endsWith(ARTICLE_FILENAME_MD_SUFFIX));
 			});
 	}
 

@@ -34,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -44,36 +45,7 @@ import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 @RequiredArgsConstructor
-public class ArticleParser {
-
-	private static final List<? extends Extension> EXTENSIONS = List.of(YamlFrontMatterExtension.create(), AttributesExtension.create());
-
-	private final Parser parser = Parser.builder().extensions(EXTENSIONS).build();
-	private final HtmlRenderer renderer = HtmlRenderer.builder().extensions(EXTENSIONS)
-		.attributeProviderFactory(new IndependentAttributeProviderFactory() {
-			@Override
-			public AttributeProvider apply(LinkResolverContext __) {
-				return ArticleParser.this::attributeProviderSetAttributes;
-			}
-		})
-		.build();
-
-	private final BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor;
-	private final BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor;
-
-	private void attributeProviderSetAttributes(Node node, AttributablePart __, MutableAttributes attributes) {
-		if (node instanceof Image) {
-			handle(imageResourceProcessor, node, attributes);
-		} else if (node instanceof LinkNodeBase) {
-			handle(linkResourceProcessor, node, attributes);
-		}
-	}
-
-	private void handle(BiFunction<Category, Map<String, String>, Map<String, String>> resourceProcessor, Node node, MutableAttributes attributes) {
-		var attrs = attributes.values().stream().collect(toMap(Attribute::getName, Attribute::getValue));
-		Category category = CATEGORY_DATA_KEY.get(node.getDocument());
-		resourceProcessor.apply(category, attrs).forEach(attributes::replaceValue);
-	}
+public final class ArticleParser {
 
 	private static final NullableDataKey<Category> CATEGORY_DATA_KEY = new NullableDataKey<>("category");
 	private static final NullableDataKey<String> LANG_DATA_KEY = new NullableDataKey<>("language");
@@ -85,12 +57,26 @@ public class ArticleParser {
 	private static final NullableDataKey<String> FILE_DATA_KEY = new NullableDataKey<>("file");
 	private static final DataKey<List<String>> ALIASES_DATA_KEY = new DataKey<>("aliases", List.of());
 
+	private final Parser parser;
+	private final HtmlRenderer renderer;
+
+	public static ArticleParser of(BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor,
+								   BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor) {
+		var extensions = List.of(YamlFrontMatterExtension.create(), AttributesExtension.create());
+		return new ArticleParser(
+			Parser.builder().extensions(extensions).build(),
+			HtmlRenderer.builder().extensions(extensions)
+				.attributeProviderFactory(new ResourceAttributeProviderFactory(imageResourceProcessor, linkResourceProcessor, CATEGORY_DATA_KEY::get))
+				.build()
+		);
+	}
+
 	@SneakyThrows
 	public Article parse(ArticleResource resource) {
 		var category = resource.getCategory();
 		log.info("Parsing category '{}'", category);
 		var document = parseToDocument(resource.readable(), category, resource.getLanguage());
-		return Article.of(resource, () -> readContent(document),
+		return Article.of(resource, () -> render(document),
 			TYPE_DATA_KEY.get(document), LANG_DATA_KEY.get(document),
 			requireNonNull(TITLE_DATA_KEY.get(document), "No title for article in category " + category),
 			AUTHOR_DATA_KEY.get(document), DATE_DATA_KEY.get(document), SOURCE_DATA_KEY.get(document),
@@ -104,7 +90,7 @@ public class ArticleParser {
 		return visitor.getData();
 	}
 
-	final Document parseToDocument(@NonNull ReadableByteChannel readable, @NonNull Category category, String lang) throws IOException {
+	Document parseToDocument(@NonNull ReadableByteChannel readable, @NonNull Category category, String lang) throws IOException {
 		var document = parseToDocument(readable);
 		CATEGORY_DATA_KEY.set(document, category);
 		Map<String, List<String>> data = readFrontMatter(document);
@@ -129,20 +115,47 @@ public class ArticleParser {
 		return document;
 	}
 
+	private static Stream<String> getFrom(Map<String, List<String>> data, String name) {
+		return data.getOrDefault(name, List.of()).stream();
+	}
+
 	private Document parseToDocument(ReadableByteChannel readable) throws IOException {
 		try (var reader = Channels.newReader(readable, UTF_8)) {
 			return parser.parseReader(reader);
 		}
 	}
 
-	private static Stream<String> getFrom(Map<String, List<String>> data, String name) {
-		return data.getOrDefault(name, List.of()).stream();
-	}
-
-	final CharSequence readContent(Document doc) {
+	CharSequence render(Document doc) {
 		StringBuilder sb = new StringBuilder();
 		renderer.render(doc, sb);
 		return sb;
 	}
 
+}
+
+@RequiredArgsConstructor
+class ResourceAttributeProviderFactory extends IndependentAttributeProviderFactory {
+
+	private final BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor;
+	private final BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor;
+	private final Function<Document, Category> categoryProvider;
+
+	@Override
+	public AttributeProvider apply(LinkResolverContext __) {
+		return this::attributeProviderSetAttributes;
+	}
+
+	private void attributeProviderSetAttributes(Node node, AttributablePart __, MutableAttributes attributes) {
+		if (node instanceof Image) {
+			handle(imageResourceProcessor, node, attributes);
+		} else if (node instanceof LinkNodeBase) {
+			handle(linkResourceProcessor, node, attributes);
+		}
+	}
+
+	private void handle(BiFunction<Category, Map<String, String>, Map<String, String>> resourceProcessor, Node node, MutableAttributes attributes) {
+		var attrs = attributes.values().stream().collect(toMap(Attribute::getName, Attribute::getValue));
+		Category category = categoryProvider.apply(node.getDocument());
+		resourceProcessor.apply(category, attrs).forEach(attributes::replaceValue);
+	}
 }

@@ -46,7 +46,10 @@ public class Pawgen implements AutoCloseable {
 		var processingExecutor = new ProcessingExecutorService();
 		var resourceFactory = new ResourceProcessor(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()), processingExecutor);
-		var queryService = new ArticleQuery(storage, new ArticleParser(resourceFactory::image, resourceFactory::link));
+		var queryService = new ArticleQuery(storage, new Parser(
+			new ArticleParser(resourceFactory::image, resourceFactory::link),
+			net.pawet.pawgen.component.markdown.ArticleParser.of(resourceFactory::image, resourceFactory::link)
+		)::parse);
 		var renderer = Renderer.of(templater, clock, queryService, processingExecutor);
 		return new Pawgen(clock, processingExecutor, queryService, renderer, fsRegistry, storage, resourceFactory);
 	}

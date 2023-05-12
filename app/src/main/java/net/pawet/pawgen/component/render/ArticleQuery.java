@@ -3,12 +3,15 @@ package net.pawet.pawgen.component.render;
 import lombok.RequiredArgsConstructor;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
+import net.pawet.pawgen.component.system.storage.ArticleResource;
 import net.pawet.pawgen.component.system.storage.Storage;
-import net.pawet.pawgen.component.xml.ArticleParser;
 
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.Comparator.comparing;
@@ -19,8 +22,9 @@ public class ArticleQuery {
 	private final Map<Category, Collection<Article>> cacheArticle = new ConcurrentHashMap<>();
 	private final Map<Category, Collection<Article>> cacheChildren = new ConcurrentHashMap<>();
 	private final Map<Category, Collection<Article>> cacheNewest = new ConcurrentHashMap<>();
+
 	private final Storage storage;
-	private final ArticleParser articleParser;
+	private final Function<ArticleResource, Article> articleParser;
 
 	public Stream<Article> getLast(Category category, ZonedDateTime toDate, int limit) {
 		return cacheNewest.computeIfAbsent(category, c -> readLastFor(c, toDate, limit)).stream();
@@ -49,7 +53,7 @@ public class ArticleQuery {
 
 	private Collection<Article> readArticlesFor(Category category) {
 		try (var resources = storage.read(category)) {
-			return resources.map(articleParser::parse).toList();
+			return resources.map(articleParser).toList();
 		}
 	}
 
@@ -59,7 +63,7 @@ public class ArticleQuery {
 
 	private Collection<Article> readChildrenFor(Category category) {
 		try (var resources = storage.readChildren(category)) {
-			return resources.map(articleParser::parse).toList();
+			return resources.map(articleParser).toList();
 		}
 	}
 
