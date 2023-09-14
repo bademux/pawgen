@@ -24,7 +24,6 @@ test: value1
 		content.toString() == '''\
 <p><img src="Isolated.png" alt="alt text" title="Title" />
 <a href="https://link-url-here.org">Link text Here</a></p>
-
 '''
 	}
 

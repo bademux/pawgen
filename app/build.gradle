@@ -1,10 +1,10 @@
 plugins {
 	id 'application'
 	id 'groovy'
-	id 'org.gradlex.extra-java-module-info' version '1.4'
+	id 'org.gradlex.extra-java-module-info' version '1.4.2'
 }
 
-var generatedDir = file("$buildDir/generated/src/java")
+var generatedDir = file("$layout.buildDirectory/generated/src/java")
 
 version rootProject.version
 
@@ -102,7 +102,7 @@ task jlink(type: Exec, dependsOn: jar) {
 	group 'distribution'
 	var launcherFileName = 'run'
 
-	outputs.dir project.file("$buildDir/jre")
+	outputs.dir project.file("$layout.buildDirectory/jre")
 	var jdkPath = javaToolchains.compilerFor(java.toolchain).get().metadata.installationPath
 	workingDir buildDir
 	executable jdkPath.file('bin/jlink').asFile
