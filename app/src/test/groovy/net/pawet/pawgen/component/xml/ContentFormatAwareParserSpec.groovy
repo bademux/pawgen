@@ -5,7 +5,7 @@ import spock.lang.Specification
 import java.lang.Void as Should
 import java.nio.channels.Channels
 
-class ContentParserSpec extends Specification {
+class ContentFormatAwareParserSpec extends Specification {
 
 	Should 'parse content'() {
 		given:

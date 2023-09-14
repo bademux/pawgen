@@ -4,21 +4,24 @@ plugins {
 	id 'org.gradlex.extra-java-module-info' version '1.4.2'
 }
 
-var generatedDir = file("$layout.buildDirectory/generated/src/java")
-
 version rootProject.version
 
 task generateJava() {
+	group 'build'
+
+	var generatedDir = layout.buildDirectory.dir("generated/sources/$name/src/java").get()
+	inputs.property('generatedDir', generatedDir as String)
 	outputs.dir generatedDir
+	compileJava.dependsOn it
+	sourceSets.main.java.srcDir it
+
 	doLast {
-		var genFile = file("$generatedDir/build/Build.java")
+		var genFile = generatedDir.file('build/Build.java').asFile
 		mkdir genFile.parentFile
-		genFile.text = "package build; public interface Build { String VERSION = \"$project.version\"; }"
+		genFile.text = """package build; public interface Build { String VERSION = "$project.version"; }"""
 	}
 }
 
-sourceSets.main.java.srcDir generatedDir
-compileJava.dependsOn generateJava
 
 compileJava {
 	sourceCompatibility = jdkVersion
@@ -102,7 +105,7 @@ task jlink(type: Exec, dependsOn: jar) {
 	group 'distribution'
 	var launcherFileName = 'run'
 
-	outputs.dir project.file("$layout.buildDirectory/jre")
+	outputs.dir layout.buildDirectory.dir('jre')
 	var jdkPath = javaToolchains.compilerFor(java.toolchain).get().metadata.installationPath
 	workingDir buildDir
 	executable jdkPath.file('bin/jlink').asFile

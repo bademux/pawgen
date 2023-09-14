@@ -5,11 +5,11 @@ import spock.lang.Specification
 import java.lang.Void as Should
 import java.time.ZonedDateTime
 
-class ArticleParserSpec extends Specification {
+class XmlArticleParserSpec extends Specification {
 
 	Should 'parse date "#value"'() {
 		when:
-		var date = ArticleParser.parseDate(value)
+		var date = XmlArticleParser.parseDate(value)
 		then:
 		date == ZonedDateTime.parse('2022-06-22T00:00Z')
 		where:

@@ -3,6 +3,7 @@ package net.pawet.pawgen.component;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import net.pawet.pawgen.component.markdown.MdArticleParser;
 import net.pawet.pawgen.component.render.ArticleQuery;
 import net.pawet.pawgen.component.render.Renderer;
 import net.pawet.pawgen.component.render.Templater;
@@ -15,7 +16,7 @@ import net.pawet.pawgen.component.system.storage.DigestAwareResource;
 import net.pawet.pawgen.component.system.storage.FileSystemRegistry;
 import net.pawet.pawgen.component.system.storage.Resource;
 import net.pawet.pawgen.component.system.storage.Storage;
-import net.pawet.pawgen.component.xml.ArticleParser;
+import net.pawet.pawgen.component.xml.XmlArticleParser;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -46,10 +47,11 @@ public class Pawgen implements AutoCloseable {
 		var processingExecutor = new ProcessingExecutorService();
 		var resourceFactory = new ResourceProcessor(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()), processingExecutor);
-		var queryService = new ArticleQuery(storage, new Parser(
-			new ArticleParser(resourceFactory::image, resourceFactory::link),
-			net.pawet.pawgen.component.markdown.ArticleParser.of(resourceFactory::image, resourceFactory::link)
-		)::parse);
+		var parser = new FormatAwareArticleParser(
+			XmlArticleParser.of(resourceFactory::image, resourceFactory::link),
+			MdArticleParser.of(resourceFactory::image, resourceFactory::link)
+		);
+		var queryService = new ArticleQuery(storage, parser::parse);
 		var renderer = Renderer.of(templater, clock, queryService, processingExecutor);
 		return new Pawgen(clock, processingExecutor, queryService, renderer, fsRegistry, storage, resourceFactory);
 	}
@@ -62,7 +64,7 @@ public class Pawgen implements AutoCloseable {
 		return measure(this::cleanupOutputDirInternal);
 	}
 
-	public void cleanupOutputDirInternal() {
+	void cleanupOutputDirInternal() {
 		log.debug("Cleaning output dir");
 		storage.cleanupOutputDir();
 	}
@@ -78,7 +80,7 @@ public class Pawgen implements AutoCloseable {
 	}
 
 	@SneakyThrows
-	public void renderInternal() {
+	void renderInternal() {
 		processingExecutor.execute(this::copyFiles);
 		log.info("Finding articles to be processed.");
 		try (var headers = queryService.getArticles(Category.ROOT)) {

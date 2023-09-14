@@ -6,11 +6,11 @@ import spock.lang.Specification
 import java.lang.Void as Should
 import java.nio.channels.Channels
 
-class ArticleParserSpec extends Specification {
+class MdArticleParserSpec extends Specification {
 
 	Should 'read content'() {
 		given:
-		var parser = ArticleParser.of({ c, a -> a }, { c, a -> a })
+		var parser = MdArticleParser.of({ c, a -> a }, { c, a -> a })
 		var data = parser.parseToDocument(Channels.newChannel(new ByteArrayInputStream('''
 ---
 test: value1

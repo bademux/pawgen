@@ -1,13 +1,15 @@
 package net.pawet.pawgen.component;
 
 import lombok.RequiredArgsConstructor;
+import net.pawet.pawgen.component.markdown.MdArticleParser;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
+import net.pawet.pawgen.component.xml.XmlArticleParser;
 
 @RequiredArgsConstructor
-public final class Parser {
+public final class FormatAwareArticleParser {
 
-	private final net.pawet.pawgen.component.xml.ArticleParser xmlParser;
-	private final net.pawet.pawgen.component.markdown.ArticleParser mdParser;
+	private final XmlArticleParser xmlParser;
+	private final MdArticleParser mdParser;
 
 	public Article parse(ArticleResource readable) {
 		String format = readable.getFormat();

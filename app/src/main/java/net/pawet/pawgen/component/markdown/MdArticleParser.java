@@ -17,7 +17,6 @@ import com.vladsch.flexmark.util.data.DataKey;
 import com.vladsch.flexmark.util.data.NullableDataKey;
 import com.vladsch.flexmark.util.html.Attribute;
 import com.vladsch.flexmark.util.html.MutableAttributes;
-import com.vladsch.flexmark.util.misc.Extension;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -45,7 +44,7 @@ import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 @RequiredArgsConstructor
-public final class ArticleParser {
+public final class MdArticleParser {
 
 	private static final NullableDataKey<Category> CATEGORY_DATA_KEY = new NullableDataKey<>("category");
 	private static final NullableDataKey<String> LANG_DATA_KEY = new NullableDataKey<>("language");
@@ -60,10 +59,10 @@ public final class ArticleParser {
 	private final Parser parser;
 	private final HtmlRenderer renderer;
 
-	public static ArticleParser of(BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor,
-								   BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor) {
+	public static MdArticleParser of(BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor,
+									 BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor) {
 		var extensions = List.of(YamlFrontMatterExtension.create(), AttributesExtension.create());
-		return new ArticleParser(
+		return new MdArticleParser(
 			Parser.builder().extensions(extensions).build(),
 			HtmlRenderer.builder().extensions(extensions)
 				.attributeProviderFactory(new ResourceAttributeProviderFactory(imageResourceProcessor, linkResourceProcessor, CATEGORY_DATA_KEY::get))

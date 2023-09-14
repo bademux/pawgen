@@ -23,8 +23,8 @@ import static java.util.function.Predicate.not;
 import static java.util.stream.StreamSupport.stream;
 
 @Slf4j
-@RequiredArgsConstructor
-public final class ArticleParser {
+@RequiredArgsConstructor(staticName = "of")
+public final class XmlArticleParser {
 
 	private final BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor;
 	private final BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor;
@@ -85,7 +85,7 @@ public final class ArticleParser {
 			.findFirst()
 			.map(Attribute::getValue)
 			.filter(not(String::isBlank))
-			.map(ArticleParser::parseDate)
+			.map(XmlArticleParser::parseDate)
 			.orElse(null);
 		String file = attrs.stream()
 			.filter(attr1 -> "file".equalsIgnoreCase(attr1.getName().getLocalPart()))
