@@ -106,10 +106,12 @@ public class Storage {
 	private static Stream<Path> listArticlesInDir(Path c) {
 		return Files.list(c)
 			.filter(Files::isRegularFile)
-			.filter(path -> {
-				String name = path.getFileName().toString();
-				return name.startsWith(ARTICLE_FILENAME_PREFIX) && (name.endsWith(ARTICLE_FILENAME_XML_SUFFIX) || name.endsWith(ARTICLE_FILENAME_MD_SUFFIX));
-			});
+			.filter(Storage::isArticleFile);
+	}
+
+	private static boolean isArticleFile(Path path) {
+		String name = path.getFileName().toString();
+		return name.startsWith(ARTICLE_FILENAME_PREFIX) && (/*name.endsWith(ARTICLE_FILENAME_XML_SUFFIX) ||*/ name.endsWith(ARTICLE_FILENAME_MD_SUFFIX));
 	}
 
 	public Stream<Resource> staticFiles() {

@@ -38,7 +38,6 @@ import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
-import static java.util.Optional.ofNullable;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toMap;
 
@@ -77,10 +76,16 @@ public final class MdArticleParser {
 		var document = parseToDocument(resource.readable(), category, resource.getLanguage());
 		return Article.of(resource, () -> render(document),
 			TYPE_DATA_KEY.get(document), LANG_DATA_KEY.get(document),
-			requireNonNull(TITLE_DATA_KEY.get(document), "No title for article in category " + category),
+			getTitleOrSpacerTitle(document),
 			AUTHOR_DATA_KEY.get(document), DATE_DATA_KEY.get(document), SOURCE_DATA_KEY.get(document),
 			FILE_DATA_KEY.get(document), ALIASES_DATA_KEY.get(document)
 		);
+	}
+
+	//TODO make NonNull for now title can be null for spacing articles
+	private static String getTitleOrSpacerTitle(Document document) {
+		String title = TITLE_DATA_KEY.get(document);
+		return title == null ? "" : title;
 	}
 
 	private static Map<String, List<String>> readFrontMatter(Document node) {
@@ -89,33 +94,32 @@ public final class MdArticleParser {
 		return visitor.getData();
 	}
 
-	Document parseToDocument(@NonNull ReadableByteChannel readable, @NonNull Category category, String lang) throws IOException {
+	Document parseToDocument(@NonNull ReadableByteChannel readable, @NonNull Category category, String extLang) throws IOException {
 		var document = parseToDocument(readable);
 		CATEGORY_DATA_KEY.set(document, category);
 		Map<String, List<String>> data = readFrontMatter(document);
-		getFrom(data, LANG_DATA_KEY.getName())
-			.findFirst()
-			.or(() -> ofNullable(lang))
-			.ifPresent(value -> document.set(LANG_DATA_KEY, value));
-		getFrom(data, TYPE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(TYPE_DATA_KEY, value));
-		getFrom(data, TITLE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(TITLE_DATA_KEY, value));
-		getFrom(data, AUTHOR_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(AUTHOR_DATA_KEY, value));
-		getFrom(data, DATE_DATA_KEY.getName()).findFirst()
-			.filter(not(String::isBlank))
-			.map(DateTimeFormatter.ISO_LOCAL_DATE::parse)
+		from(data, LANG_DATA_KEY.getName()).findFirst()
+			.ifPresentOrElse(frontmatterLang -> {
+				if(!frontmatterLang.equals(extLang)){
+					throw new IllegalStateException("Externaly provided language hint '%s' is not matching article '%s'".formatted(extLang, frontmatterLang));
+				}
+				document.set(LANG_DATA_KEY, frontmatterLang);
+			}, () -> document.set(LANG_DATA_KEY, extLang));
+		from(data, TYPE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(TYPE_DATA_KEY, value));
+		from(data, TITLE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(TITLE_DATA_KEY, value));
+		from(data, AUTHOR_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(AUTHOR_DATA_KEY, value));
+		from(data, DATE_DATA_KEY.getName()).findFirst()
+			.map(DateTimeFormatter.ISO_DATE_TIME::parse)
 			.map(temporalAccessor -> temporalAccessor.query(ZonedDateTime::from))
 			.ifPresent(value -> document.set(DATE_DATA_KEY, value));
-		getFrom(data, SOURCE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(SOURCE_DATA_KEY, value));
-		getFrom(data, FILE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(FILE_DATA_KEY, value));
-		ALIASES_DATA_KEY.set(document, getFrom(data, "aliases")
-			.filter(not(String::isBlank))
-			.distinct()
-			.toList());
+		from(data, SOURCE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(SOURCE_DATA_KEY, value));
+		from(data, FILE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(FILE_DATA_KEY, value));
+		ALIASES_DATA_KEY.set(document, from(data, "aliases").distinct().toList());
 		return document;
 	}
 
-	private static Stream<String> getFrom(Map<String, List<String>> data, String name) {
-		return data.getOrDefault(name, List.of()).stream();
+	private static Stream<String> from(Map<String, List<String>> data, String name) {
+		return data.getOrDefault(name, List.of()).stream().filter(not(String::isBlank));
 	}
 
 	private Document parseToDocument(ReadableByteChannel readable) throws IOException {
