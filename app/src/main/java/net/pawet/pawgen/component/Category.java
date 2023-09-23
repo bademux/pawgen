@@ -25,7 +25,7 @@ public final class Category implements Comparable<Category> {
 	private final String asString = createStringValue();
 
 	public static Category of(Path categoryPath) {
-		if (categoryPath == null) {
+		if (categoryPath == null || categoryPath.getFileName().toString().isEmpty()) {
 			return Category.ROOT;
 		}
 

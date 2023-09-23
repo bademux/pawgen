@@ -2,6 +2,7 @@ package net.pawet.pawgen;
 
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Pawgen;
+import net.pawet.pawgen.component.Xml2MDMigrator;
 import net.pawet.pawgen.component.deployer.DeployerFactory;
 import net.pawet.pawgen.component.system.CliOptions;
 
@@ -22,6 +23,10 @@ public class Application {
 	public static int run(List<String> args) {
 		long start = CLOCK.millis();
 		var config = CliOptions.parse(args);
+		if(true) {
+			Xml2MDMigrator.migrate(config);
+			return 0;
+		}
 		log.info("Executed with config: {}", config);
 		try (var app = setupShutdownHook(Pawgen.create(CLOCK, config))) {
 			var cleanupIn = app.cleanupOutputDir();
