@@ -9,7 +9,7 @@ rootProject.name = 'pawgen'
 include ':app'
 include ':deployer'
 include ':libs:twelvemonkeys'
-include ':libs:flexmark'
+include ':libs:commonmark'
 include ':libs:jai'
 include ':libs:mustache'
 

@@ -42,9 +42,13 @@ class NetlifyApplicationSpec extends Specification {
 		]).toUri() as String
 		and: 'site data'
 		write(contentDir.resolve('image.bmp'), createTestImageAsByte(46, 27))
-		writeString(contentDir.resolve('index.by.xml'), '''\
-<?xml version="1.0" encoding="UTF-8" ?>
-<body title="Галоўная" type="article" file="staticFile.bin"><a href="/files/staticFile.bin">testArticle</a><img src="image.bmp" /></body>
+		writeString(contentDir.resolve('index.by.md'), '''\
+---
+title: Галоўная
+type: article
+file: staticFile.bin
+---
+[testArticle](/files/staticFile.bin) ![alt text](image.bmp)
 ''')
 		write(filesDir.resolve('staticFile.bin'), 'test'.bytes)
 		writeString(templateDir.resolve('index.html.mustache'), '{{{.}}}')
@@ -56,12 +60,11 @@ class NetlifyApplicationSpec extends Specification {
 		result == 0
 		and:
 		verifyAll(netlifyServer.wireMock.serveEvents.requests.request.url) {
-			it.size() == 3
 			it.findAll({ it ==~ /\/deploys\/(.*)/ }).size() == 1
 			it.findAll({ it ==~ /\/sites\/(.*)\/deploys\?title=pawgen_deployer/ }).size() == 1
 			it.findAll({ it ==~ /\/sites\/(.*)\/deploys\?per_page=1&state=prepared/ }).size() == 1
+			it.size() == 3
 		}
-		netlifyServer.wireMock.serveEvents.requests.size() == 3
 		and: 'netlify deployed'
 		condition.eventually {
 			siteDeploy.find().orElseThrow().published_deploy.state.string == 'ready'

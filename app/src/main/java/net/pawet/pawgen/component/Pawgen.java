@@ -3,7 +3,7 @@ package net.pawet.pawgen.component;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.pawet.pawgen.component.markdown.MdArticleParser;
+import net.pawet.pawgen.component.markdown.MDArticleParser;
 import net.pawet.pawgen.component.render.ArticleQuery;
 import net.pawet.pawgen.component.render.Renderer;
 import net.pawet.pawgen.component.render.Templater;
@@ -47,10 +47,7 @@ public class Pawgen implements AutoCloseable {
 		var processingExecutor = new ProcessingExecutorService();
 		var resourceFactory = new ResourceProcessor(storage, imageFactory, opts.getHosts());
 		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()), processingExecutor);
-		var parser = new FormatAwareArticleParser(
-			XmlArticleParser.of(resourceFactory::image, resourceFactory::link),
-			MdArticleParser.of(resourceFactory::image, resourceFactory::link)
-		);
+		var parser = MDArticleParser.of(resourceFactory::image, resourceFactory::link);
 		var queryService = new ArticleQuery(storage, parser::parse);
 		var renderer = Renderer.of(templater, clock, queryService, processingExecutor);
 		return new Pawgen(clock, processingExecutor, queryService, renderer, fsRegistry, storage, resourceFactory);

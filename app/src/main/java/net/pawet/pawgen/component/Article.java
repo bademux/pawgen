@@ -12,6 +12,7 @@ import java.nio.channels.Channels;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -65,8 +66,9 @@ public final class Article implements Comparable<Article> {
 	private final String file;
 	private final Collection<String> aliases;
 
+	@Builder
 	public static Article of(ArticleResource resource, Supplier<CharSequence> contentSupplier, String type, String lang, String title, String author, ZonedDateTime date, String source, String file, Collection<String> aliases) {
-		return new Article(resource, contentSupplier, type, lang, title, author, date, source, file, aliases);
+		return new Article(resource, contentSupplier, type, lang, title, author, date, source, file, aliases == null ? List.of() : aliases);
 	}
 
 	public Category getCategory(){

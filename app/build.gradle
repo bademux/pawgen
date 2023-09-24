@@ -78,7 +78,7 @@ dependencies {
 	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
 	implementation project(path: ':libs:twelvemonkeys', configuration: 'moduleJar')
-	implementation project(path: ':libs:flexmark', configuration: 'moduleJar')
+	implementation project(path: ':libs:commonmark', configuration: 'moduleJar')
 	implementation project(path: ':libs:mustache', configuration: 'moduleJar')
 	implementation project(path: ':libs:jai', configuration: 'moduleJar')
 	implementation project(path: ':deployer')
