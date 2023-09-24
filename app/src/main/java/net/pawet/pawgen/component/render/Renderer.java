@@ -1,6 +1,9 @@
 package net.pawet.pawgen.component.render;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
@@ -12,6 +15,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -41,7 +45,7 @@ public class Renderer {
 			log.debug("Rendering: {}", context);
 		} catch (FileAlreadyExistsException e) {
 			log.debug("Error while generating article {}.", context, e);
-		}catch (Exception e) {
+		} catch (Exception e) {
 			log.error("Error while generating article {}.", context, e);
 			throw e;
 		}
@@ -62,12 +66,22 @@ public class Renderer {
 	@RequiredArgsConstructor(access = PRIVATE)
 	public final class ArticleContext {
 
+		//TODO https://github.com/projectlombok/lombok/issues/3506  @Synchronized with ReentrantLock
+		private final ReentrantLock lock = new ReentrantLock();
 		@ToString.Include
 		@Getter
 		private final Article article;
 
-		@Synchronized
 		public void render() {
+			lock.lock();
+			try {
+				renderInternal();
+			} finally {
+				lock.unlock();
+			}
+		}
+
+		public void renderInternal() {
 			if (isLegacy()) {
 				log.debug("legacy article, skipping {}", article);
 				return;

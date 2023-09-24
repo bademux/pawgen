@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -150,6 +151,8 @@ public final class CloudflarePagesClient {
 
 	public class AssetOperation {
 
+		//TODO https://github.com/projectlombok/lombok/issues/3506  @Synchronized with ReentrantLock
+		private final ReentrantLock lock = new ReentrantLock();
 		private final Supplier<String> jwtSupplier;
 		private final URI pagesUri;
 		private volatile String jwt;
@@ -273,10 +276,15 @@ public final class CloudflarePagesClient {
 
 		@Synchronized
 		private Builder getJwtAuthRequestBuilder() {
-			if (jwt == null) {
-				jwt = jwtSupplier.get();
+			lock.lock();
+			try {
+				if (jwt == null) {
+					jwt = jwtSupplier.get();
+				}
+				return getRequestBuilder().header("Authorization", "Bearer " + jwt);
+			} finally {
+				lock.unlock();
 			}
-			return getRequestBuilder().header("Authorization", "Bearer " + jwt);
 		}
 	}
 
