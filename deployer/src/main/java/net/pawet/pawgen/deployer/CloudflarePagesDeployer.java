@@ -70,7 +70,7 @@ public class CloudflarePagesDeployer {
 		uploadInBatches(assetOp, missing);
 
 		retrier.exec(() -> createDeployment(files, redirectsFile));
-		if (missing.size() != 0) {
+		if (!missing.isEmpty()) {
 			retrier.exec(() -> upsertFiles(missing));
 		}
 	}

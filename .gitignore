@@ -18,3 +18,5 @@ pawet.net.zip
 config.properties
 /simplelogger.properties
 /app/logging.properties
+*.csv
+*.tsv

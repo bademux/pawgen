@@ -1,8 +1,11 @@
-package net.pawet.pawgen.component.system.storage;
+package net.pawet.pawgen.component.migration;
 
-import lombok.*;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
+import net.pawet.pawgen.component.system.storage.*;
 import net.pawet.pawgen.deployer.digest.DigestValidator;
 
 import java.io.FileNotFoundException;
@@ -36,12 +39,11 @@ import static lombok.AccessLevel.PACKAGE;
 public class Storage {
 
 	public static final String ARTICLE_FILENAME_PREFIX = "index.";
-	public static final String ARTICLE_FILENAME_MD_SUFFIX = ".md";
+	public static final String ARTICLE_FILENAME_XML_SUFFIX = ".xml";
 	public static final String REDIRECTS_FILE = "_redirects";
 
 	private final Map<CacheKey, Resource> resourceCache = new ConcurrentHashMap<>();
 	private final Predicate<Path> isAttributeFile;
-	private final DigestService digestService;
 	private final Map<String, Path> staticFiles;
 	private final Path userDefinedRedirects;
 	private final Path contentDir;
@@ -110,7 +112,7 @@ public class Storage {
 
 	private static boolean isArticleFile(Path path) {
 		String name = path.getFileName().toString();
-		return name.startsWith(ARTICLE_FILENAME_PREFIX) && name.endsWith(ARTICLE_FILENAME_MD_SUFFIX);
+		return name.startsWith(ARTICLE_FILENAME_PREFIX) && (name.endsWith(ARTICLE_FILENAME_XML_SUFFIX) || name.endsWith(ARTICLE_FILENAME_MD_SUFFIX));
 	}
 
 	public Stream<Resource> staticFiles() {

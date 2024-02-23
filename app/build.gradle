@@ -26,11 +26,9 @@ task generateJava() {
 compileJava {
 	sourceCompatibility = jdkVersion
 	targetCompatibility = jdkVersion
-	options.compilerArgs += '--enable-preview'
 }
 
 test {
-	jvmArgs += "--enable-preview"
 	useJUnitPlatform()
 	modularity.inferModulePath = false
 }
@@ -51,7 +49,7 @@ application {
 run {
 	enableAssertions = true
 	environment('LC_ALL', 'en_US.UTF-8')
-	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC', '--enable-preview']
+	jvmArgs = ['-Xmx2G', '-XX:+UseShenandoahGC']
 	systemProperties = ['java.awt.headless': true, 'file.encoding': 'UTF-8', 'sun.jnu.encoding': 'UTF-8', 'java.util.logging.config.class': 'net.pawet.pawgen.utils.LoggingConfig']
 }
 

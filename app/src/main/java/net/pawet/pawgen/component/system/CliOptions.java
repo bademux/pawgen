@@ -18,7 +18,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
 
 @Slf4j
 @Getter
@@ -67,6 +68,8 @@ public final class CliOptions {
 	private final String cloudflarePagesAccountId;
 	@ToString.Include
 	private final String cloudflarePagesProjectName;
+	@ToString.Include
+	private final boolean migration;
 
 	public static final String USER_HOME = System.getProperty("user.home");
 
@@ -168,6 +171,9 @@ public final class CliOptions {
 			.ifPresent(optionsBuilder::cloudflarePagesAccountId);
 		propertyProvider.apply("cloudflarepages.projectName")
 			.ifPresent(optionsBuilder::cloudflarePagesProjectName);
+		propertyProvider.apply("migration")
+			.map(Boolean::parseBoolean)
+			.ifPresent(optionsBuilder::migration);
 	}
 
 	private static Function<String, Optional<String>> getConfigFilePropertyProvider(Collection<String> args) {

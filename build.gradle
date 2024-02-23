@@ -7,7 +7,7 @@ private String getVersion(String prefix) {
 		return versionDetails(prefix: prefix).with({ "${lastTag}.${commitDistance}-${gitHash}" }) as String
 	} catch (Exception e) {
 		logger.info("Jgit failed, trying git binary", e)
-		return'git describe --tags --always --first-parent'.execute().with({ exitValue() == 0 ? text - prefix : null })
+		return 'git describe --tags --always --first-parent'.execute().with({ exitValue() == 0 ? text - prefix : null })
 	}
 }
 
@@ -16,5 +16,14 @@ rootProject.version = getVersion('v@') ?: version
 subprojects {
 	repositories {
 		mavenCentral()
+	}
+
+	configurations.configureEach {
+		resolutionStrategy.eachDependency {
+			if (requested.group == 'org.apache.groovy') {
+				useVersion '4.0.18'
+				because('compatibility with jdk21')
+			}
+		}
 	}
 }

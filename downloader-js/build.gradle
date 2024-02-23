@@ -1,0 +1,36 @@
+plugins {
+	id 'java'
+	id 'org.teavm' version '0.9.2'
+}
+
+version rootProject.version
+
+compileJava {
+	sourceCompatibility = jdkVersion
+	targetCompatibility = jdkVersion
+}
+
+test {
+	useJUnitPlatform()
+	modularity.inferModulePath = false
+}
+
+dependencies {
+	compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+	annotationProcessor group: 'org.projectlombok', name: 'lombok', version: lombokVersion
+
+	implementation teavm.libs.jsoApis
+}
+
+teavm.js {
+	addedToWebApp = true
+	mainClass = 'net.pawet.pawgen.deployer.Downloader'
+	targetFileName = 'downloader.js'
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(jdkVersion)
+	}
+	modularity.inferModulePath = false
+}
