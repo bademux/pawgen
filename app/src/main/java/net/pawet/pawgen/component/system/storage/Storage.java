@@ -101,6 +101,15 @@ public class Storage {
 			.map(path -> new ArticleResource(category, path, this));
 	}
 
+	public Stream<ArticleResource> readXml(Category category) {
+		return Optional.ofNullable(category)
+			.map(Category::toString)
+			.map(contentDir::resolve)
+			.stream()
+			.flatMap(Storage::listArticlesInDirXml)
+			.map(path -> new ArticleResource(category, path, this));
+	}
+
 	@SneakyThrows
 	private static Stream<Path> listArticlesInDir(Path c) {
 		return Files.list(c)
@@ -108,9 +117,23 @@ public class Storage {
 			.filter(Storage::isArticleFile);
 	}
 
+
+	@SneakyThrows
+	private static Stream<Path> listArticlesInDirXml(Path c) {
+		return Files.list(c)
+			.filter(Files::isRegularFile)
+			.filter(Storage::isArticleFileXML);
+	}
+
 	private static boolean isArticleFile(Path path) {
 		String name = path.getFileName().toString();
 		return name.startsWith(ARTICLE_FILENAME_PREFIX) && name.endsWith(ARTICLE_FILENAME_MD_SUFFIX);
+	}
+
+
+	private static boolean isArticleFileXML(Path path) {
+		String name = path.getFileName().toString();
+		return name.startsWith(ARTICLE_FILENAME_PREFIX) && name.endsWith(".xml");
 	}
 
 	public Stream<Resource> staticFiles() {

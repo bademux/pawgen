@@ -2,7 +2,6 @@ package net.pawet.pawgen;
 
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Pawgen;
-import net.pawet.pawgen.component.Xml2MDMigrator;
 import net.pawet.pawgen.component.deployer.DeployerFactory;
 import net.pawet.pawgen.component.system.CliOptions;
 

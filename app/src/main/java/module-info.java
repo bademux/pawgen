@@ -5,7 +5,7 @@ module pawgen {
 	exports net.pawet.pawgen.component;
 	exports net.pawet.pawgen.utils;
 
-	requires deployer;
+    requires deployer;
 	requires jdk.zipfs;
 	requires java.xml;
 	requires java.desktop;

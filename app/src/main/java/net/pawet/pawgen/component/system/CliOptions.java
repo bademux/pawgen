@@ -180,12 +180,11 @@ public final class CliOptions {
 		Function<String, String> f = args.stream().filter(isConfigFileName()).findAny()
 			.map(s -> {
 				try {
-					return new URI(s);
+					return Path.of(new URI(s));
 				} catch (URISyntaxException e) {
 					return null;
 				}
 			})
-			.map(Path::of)
 			.or(() -> Optional.of("./config.properties").map(Path::of))
 			.map(CliOptions::readConfig)
 			.orElseGet(Map::of)::get;
