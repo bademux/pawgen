@@ -1,48 +1,71 @@
 package net.pawet.pawgen.component.markdown;
 
+import com.vladsch.flexmark.ast.Image;
+import com.vladsch.flexmark.ast.LinkNodeBase;
+import com.vladsch.flexmark.ext.attributes.AttributesExtension;
+import com.vladsch.flexmark.ext.yaml.front.matter.AbstractYamlFrontMatterVisitor;
+import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension;
+import com.vladsch.flexmark.html.AttributeProvider;
+import com.vladsch.flexmark.html.HtmlRenderer;
+import com.vladsch.flexmark.html.IndependentAttributeProviderFactory;
+import com.vladsch.flexmark.html.renderer.AttributablePart;
+import com.vladsch.flexmark.html.renderer.LinkResolverContext;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.util.ast.Document;
+import com.vladsch.flexmark.util.ast.Node;
+import com.vladsch.flexmark.util.data.DataKey;
+import com.vladsch.flexmark.util.data.NullableDataKey;
+import com.vladsch.flexmark.util.html.Attribute;
+import com.vladsch.flexmark.util.html.MutableAttributes;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.component.system.storage.ArticleResource;
-import org.commonmark.ext.front.matter.YamlFrontMatterBlock;
-import org.commonmark.ext.front.matter.YamlFrontMatterExtension;
-import org.commonmark.ext.front.matter.YamlFrontMatterNode;
-import org.commonmark.ext.gfm.tables.TablesExtension;
-import org.commonmark.ext.image.attributes.ImageAttributesExtension;
-import org.commonmark.node.*;
-import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.AttributeProvider;
-import org.commonmark.renderer.html.AttributeProviderContext;
-import org.commonmark.renderer.html.AttributeProviderFactory;
-import org.commonmark.renderer.html.HtmlRenderer;
 
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
-import static lombok.AccessLevel.PROTECTED;
+import static java.util.Objects.requireNonNull;
+import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 @RequiredArgsConstructor
 public final class MDArticleParser {
 
+	private static final NullableDataKey<Category> CATEGORY_DATA_KEY = new NullableDataKey<>("category");
+	private static final NullableDataKey<String> LANG_DATA_KEY = new NullableDataKey<>("language");
+	private static final DataKey<String> TYPE_DATA_KEY = new DataKey<>("type", "article");
+	private static final NullableDataKey<String> TITLE_DATA_KEY = new NullableDataKey<>("title");
+	private static final NullableDataKey<List<String>> AUTHORS_DATA_KEY = new NullableDataKey<>("authors");
+	private static final NullableDataKey<ZonedDateTime> DATE_DATA_KEY = new NullableDataKey<>("date");
+	private static final NullableDataKey<String> SOURCE_DATA_KEY = new NullableDataKey<>("source");
+	private static final NullableDataKey<String> FILE_DATA_KEY = new NullableDataKey<>("file");
+	private static final DataKey<List<String>> ALIASES_DATA_KEY = new DataKey<>("aliases", List.of());
+
 	private final Parser parser;
 	private final HtmlRenderer renderer;
 
-	public static MDArticleParser of(BiFunction<Category, Map<String, String>, Map<String, String>> imageProcessor,
-									 BiFunction<Category, Map<String, String>, Map<String, String>> linkProcessor) {
-		var extensions = List.of(YamlFrontMatterExtension.create(), ImageAttributesExtension.create(), TablesExtension.create());
+	public static MDArticleParser of(BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor,
+									 BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor) {
+		var extensions = List.of(YamlFrontMatterExtension.create(), AttributesExtension.create());
 		return new MDArticleParser(
 			Parser.builder().extensions(extensions).build(),
-			HtmlRenderer.builder().extensions(extensions).attributeProviderFactory(new ResourceAttributeProviderFactory(imageProcessor, linkProcessor)).build()
+			HtmlRenderer.builder().extensions(extensions)
+				.attributeProviderFactory(new ResourceAttributeProviderFactory(imageResourceProcessor, linkResourceProcessor, CATEGORY_DATA_KEY::get))
+				.build()
 		);
 	}
 
@@ -50,117 +73,92 @@ public final class MDArticleParser {
 	public Article parse(ArticleResource resource) {
 		var category = resource.getCategory();
 		log.info("Parsing category '{}'", category);
-		var readable = resource.readable();
-		String extLang = resource.getLanguage();
-		var articleBuilder = parse(readable, category, extLang);
-		var article = articleBuilder.resource(resource).build();
-		if (!article.getLang().equals(extLang)) {
-			throw new IllegalStateException("Externally provided language hint '%s' is not matching article '%s'".formatted(article.getLang(), article));
-		}
-		return article;
+		var document = parseToDocument(resource.readable(), category, resource.getLanguage());
+		return Article.of(resource, () -> render(document),
+			TYPE_DATA_KEY.get(document), LANG_DATA_KEY.get(document),
+			getTitleOrSpacerTitle(document),
+			String.join(",", requireNonNull(AUTHORS_DATA_KEY.get(document))), DATE_DATA_KEY.get(document), SOURCE_DATA_KEY.get(document),
+			FILE_DATA_KEY.get(document), ALIASES_DATA_KEY.get(document)
+		);
 	}
 
-	Article.ArticleBuilder parse(ReadableByteChannel readable, Category category, String extLang) throws IOException {
+	//TODO make NonNull for now title can be null for spacing articles
+	private static String getTitleOrSpacerTitle(Document document) {
+		String title = TITLE_DATA_KEY.get(document);
+		return title == null ? "" : title;
+	}
+
+	private static Map<String, List<String>> readFrontMatter(Document node) {
+		var visitor = new AbstractYamlFrontMatterVisitor();
+		visitor.visit(node);
+		return visitor.getData();
+	}
+
+	Document parseToDocument(@NonNull ReadableByteChannel readable, @NonNull Category category, String extLang) throws IOException {
 		var document = parseToDocument(readable);
-		var articleBuilder = Article.builder().lang(extLang);
-		if (!(document.getFirstChild() instanceof YamlFrontMatterBlock yfmb)) {
-			throw new IllegalStateException("Frontmatter is mandatory");
-		}
-
-		populateArticleProperties(yfmb, articleBuilder);
-
-		AttachedData.attach(category, document);
-		articleBuilder.contentSupplier(() -> render(document));
-
-		return articleBuilder;
+		CATEGORY_DATA_KEY.set(document, category);
+		Map<String, List<String>> data = readFrontMatter(document);
+		from(data, LANG_DATA_KEY.getName()).findFirst()
+			.ifPresentOrElse(frontmatterLang -> {
+				if(!frontmatterLang.equals(extLang)){
+					throw new IllegalStateException("Externaly provided language hint '%s' is not matching article '%s'".formatted(extLang, frontmatterLang));
+				}
+				document.set(LANG_DATA_KEY, frontmatterLang);
+			}, () -> document.set(LANG_DATA_KEY, extLang));
+		from(data, TYPE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(TYPE_DATA_KEY, value));
+		from(data, TITLE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(TITLE_DATA_KEY, value));
+		document.set(AUTHORS_DATA_KEY, from(data, AUTHORS_DATA_KEY.getName()).toList());
+		from(data, DATE_DATA_KEY.getName()).findFirst()
+			.map(DateTimeFormatter.ISO_DATE_TIME::parse)
+			.map(temporalAccessor -> temporalAccessor.query(ZonedDateTime::from))
+			.ifPresent(value -> document.set(DATE_DATA_KEY, value));
+		from(data, SOURCE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(SOURCE_DATA_KEY, value));
+		from(data, FILE_DATA_KEY.getName()).findFirst().ifPresent(value -> document.set(FILE_DATA_KEY, value));
+		ALIASES_DATA_KEY.set(document, from(data, "aliases").distinct().toList());
+		return document;
 	}
 
-	private static void populateArticleProperties(YamlFrontMatterBlock block, Article.ArticleBuilder articleBuilder) {
-		var node = block.getFirstChild();
-		while (node instanceof YamlFrontMatterNode yfn) {
-			populateArticleProperties(yfn, articleBuilder);
-			node = node.getNext();
-		}
-	}
-
-	private static void populateArticleProperties(YamlFrontMatterNode node, Article.ArticleBuilder articleBuilder) {
-		switch (node.getKey()) {
-			case "language" -> articleBuilder.lang(node.getValues().get(0));
-			case "type" -> articleBuilder.type(node.getValues().get(0));
-			case "title" -> articleBuilder.title(node.getValues().get(0));
-			case "author" -> articleBuilder.author(node.getValues().get(0));
-			case "date" -> articleBuilder.date(ISO_DATE_TIME.parse(node.getValues().get(0), ZonedDateTime::from));
-			case "source" -> articleBuilder.source(node.getValues().get(0));
-			case "file" -> articleBuilder.file(node.getValues().get(0));
-			case "aliases" -> articleBuilder.aliases(node.getValues());
-			default -> throw new IllegalArgumentException("Unknown article Frontmatter property: " + node.getKey());
-		}
+	private static Stream<String> from(Map<String, List<String>> data, String name) {
+		return data.getOrDefault(name, List.of()).stream().filter(not(String::isBlank));
 	}
 
 	private Document parseToDocument(ReadableByteChannel readable) throws IOException {
 		try (var reader = Channels.newReader(readable, UTF_8)) {
-			return (Document) parser.parseReader(reader);
+			return parser.parseReader(reader);
 		}
 	}
 
 	CharSequence render(Document doc) {
-		var sb = new StringBuilder();
+		StringBuilder sb = new StringBuilder();
 		renderer.render(doc, sb);
 		return sb;
 	}
 
 }
 
-@RequiredArgsConstructor(access = PROTECTED)
-final class ResourceAttributeProviderFactory implements AttributeProviderFactory {
+@RequiredArgsConstructor
+class ResourceAttributeProviderFactory extends IndependentAttributeProviderFactory {
 
 	private final BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor;
 	private final BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor;
-
-	private void attributeProviderSetAttributes(Node node, String tagName, Map<String, String> attrs) {
-		switch (node) {
-			case Image image -> attrs.putAll(imageResourceProcessor.apply(AttachedData.findCategory(image), attrs));
-			case Link link -> attrs.putAll(linkResourceProcessor.apply(AttachedData.findCategory(link), attrs));
-			default -> {
-			}
-		}
-	}
+	private final Function<Document, Category> categoryProvider;
 
 	@Override
-	public AttributeProvider create(AttributeProviderContext __) {
+	public AttributeProvider apply(LinkResolverContext __) {
 		return this::attributeProviderSetAttributes;
 	}
 
-}
-
-@RequiredArgsConstructor(access = PROTECTED)
-final class AttachedData extends CustomNode {
-
-	private final Category category;
-
-	public static void attach(Category category, Document document) {
-		document.appendChild(new AttachedData(category));
-	}
-
-	@Override
-	public void accept(Visitor visitor) {
-	}
-
-	public static Category findCategory(Node node) {
-		var parent = node.getParent();
-		while (parent != null) {
-			node = parent;
-			parent = node.getParent();
+	private void attributeProviderSetAttributes(Node node, AttributablePart __, MutableAttributes attributes) {
+		if (node instanceof Image) {
+			handle(imageResourceProcessor, node, attributes);
+		} else if (node instanceof LinkNodeBase) {
+			handle(linkResourceProcessor, node, attributes);
 		}
-		var dataNode = node.getFirstChild();
-		while (!(dataNode instanceof AttachedData data)) {
-			if (dataNode == null) {
-				throw new IllegalStateException("No AttachedData found for article");
-			}
-			dataNode = dataNode.getNext();
-		}
-		return data.category;
 	}
 
+	private void handle(BiFunction<Category, Map<String, String>, Map<String, String>> resourceProcessor, Node node, MutableAttributes attributes) {
+		var attrs = attributes.values().stream().collect(toMap(Attribute::getName, Attribute::getValue));
+		Category category = categoryProvider.apply(node.getDocument());
+		resourceProcessor.apply(category, attrs).forEach(attributes::replaceValue);
+	}
 }
-
