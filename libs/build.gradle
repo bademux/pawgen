@@ -1,14 +1,7 @@
-//TODO: use directly when JPMS will be impl
-buildscript {
-	repositories {
-		maven {
-			url 'https://plugins.gradle.org/m2/'
-		}
-	}
-	dependencies {
-		classpath 'org.gradlex:extra-java-module-info:1.4'
-	}
+plugins {
+	id 'org.gradlex.extra-java-module-info' version '1.5' apply false
 }
+
 
 //TODO: https://github.com/spullara/mustache.java/issues/289
 project(':libs:mustache') {
@@ -77,6 +70,7 @@ project(':libs:commonmark') {
 
 			exports 'org.commonmark.node'
 			exports 'org.commonmark.parser'
+			exports 'org.commonmark.parser.block'
 			exports 'org.commonmark.renderer'
 			exports 'org.commonmark.renderer.html'
 			exports 'org.commonmark.ext.front.matter'
@@ -88,6 +82,83 @@ project(':libs:commonmark') {
 	artifacts {
 		moduleJar configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
 			.find({ it.moduleVersion.id.name == 'commonmark' })
+			.file
+	}
+
+}
+
+//TODO: https://github.com/vsch/flexmark-java/issues/571
+project(':libs:flexmark') {
+	apply plugin: 'java'
+	apply plugin: 'org.gradlex.extra-java-module-info'
+
+	configurations {
+		moduleJar {
+			canBeConsumed = true
+			canBeResolved = false
+		}
+	}
+	version flexmarkVersion
+
+	dependencies {
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-yaml-front-matter', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-attributes', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-html2md-converter', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-tables', version: flexmarkVersion
+		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-emoji', version: flexmarkVersion
+	}
+
+
+	extraJavaModuleInfo {
+		failOnMissingModuleInfo = true
+		module('com.vladsch.flexmark:flexmark', 'flexmark') {
+			mergeJar('com.vladsch.flexmark:flexmark-util')
+			mergeJar('com.vladsch.flexmark:flexmark-util-format')
+			mergeJar('com.vladsch.flexmark:flexmark-util-ast')
+			mergeJar('com.vladsch.flexmark:flexmark-util-builder')
+			mergeJar('com.vladsch.flexmark:flexmark-util-dependency')
+			mergeJar('com.vladsch.flexmark:flexmark-util-html')
+			mergeJar('com.vladsch.flexmark:flexmark-util-options')
+			mergeJar('com.vladsch.flexmark:flexmark-util-sequence')
+			mergeJar('com.vladsch.flexmark:flexmark-util-collection')
+			mergeJar('com.vladsch.flexmark:flexmark-util-data')
+			mergeJar('com.vladsch.flexmark:flexmark-util-misc')
+			mergeJar('com.vladsch.flexmark:flexmark-util-visitor')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-yaml-front-matter')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-attributes')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-tables')
+			mergeJar('com.vladsch.flexmark:flexmark-html2md-converter')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-emoji')
+			mergeJar('com.vladsch.flexmark:flexmark-jira-converter')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-gfm-strikethrough')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-wikilink')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-ins')
+			mergeJar('com.vladsch.flexmark:flexmark-ext-superscript')
+			mergeJar('com.vladsch.flexmark:flexmark-html2md-converter')
+			mergeJar('org.jsoup:jsoup') //used by html2md-converter
+
+			exports 'com.vladsch.flexmark.ext.attributes'
+			exports 'com.vladsch.flexmark.ext.yaml.front.matter'
+			exports 'com.vladsch.flexmark.util.html'
+			exports 'com.vladsch.flexmark.util.sequence'
+			exports 'com.vladsch.flexmark.util.ast'
+			exports 'com.vladsch.flexmark.util.data'
+			exports 'com.vladsch.flexmark.ast'
+			exports 'com.vladsch.flexmark.html'
+			exports 'com.vladsch.flexmark.html.renderer'
+			exports 'com.vladsch.flexmark.parser'
+			exports 'com.vladsch.flexmark.parser.block'
+			exports 'com.vladsch.flexmark.util.misc'
+			exports 'com.vladsch.flexmark.html2md.converter'
+			exports 'org.jsoup.nodes'
+			exports 'org.jsoup.parser'
+		}
+	}
+
+	artifacts {
+		moduleJar configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+			.find({ it.moduleVersion.id.name == 'flexmark' })
 			.file
 	}
 

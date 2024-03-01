@@ -5,29 +5,31 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.markdown.MDArticleParser;
 import net.pawet.pawgen.component.render.ArticleQuery;
+import net.pawet.pawgen.component.render.TrackingExecutor;
 import net.pawet.pawgen.component.render.Renderer;
 import net.pawet.pawgen.component.render.Templater;
 import net.pawet.pawgen.component.resource.ResourceProcessor;
 import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
 import net.pawet.pawgen.component.resource.img.WatermarkFilterFactory;
 import net.pawet.pawgen.component.system.CliOptions;
-import net.pawet.pawgen.component.system.ProcessingExecutorService;
 import net.pawet.pawgen.component.system.storage.DigestAwareResource;
 import net.pawet.pawgen.component.system.storage.FileSystemRegistry;
 import net.pawet.pawgen.component.system.storage.Resource;
 import net.pawet.pawgen.component.system.storage.Storage;
-import net.pawet.pawgen.component.xml.XmlArticleParser;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
 import java.util.stream.Stream;
+
+import static java.time.temporal.ChronoUnit.MINUTES;
 
 @Slf4j
 @RequiredArgsConstructor
 public class Pawgen implements AutoCloseable {
 
 	private final Clock clock;
-	private final ProcessingExecutorService processingExecutor;
+	private final TrackingExecutor trackingExecutor;
 	private final ArticleQuery queryService;
 	private final Renderer renderer;
 	private final FileSystemRegistry fsRegistry;
@@ -44,13 +46,18 @@ public class Pawgen implements AutoCloseable {
 		var watermarkFilter = new WatermarkFilterFactory(fsRegistry::getPathFsRegistration)
 			.create(opts.getWatermarkText(), opts.getWatermarkUri());
 		var imageFactory = ProcessableImageFactory.of(watermarkFilter, 250);
-		var processingExecutor = new ProcessingExecutorService();
+		var threadFactory = Thread.ofVirtual().factory();
 		var resourceFactory = new ResourceProcessor(storage, imageFactory, opts.getHosts());
-		var templater = new Templater(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()), processingExecutor);
-		var parser = MDArticleParser.of(resourceFactory::image, resourceFactory::link);
+		var executor = new TrackingExecutor(threadFactory);
+		var templater = Templater.of(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()), executor);
+		var parser = MDArticleParser.of(resourceFactory::attributes);
+//		var parser = new FormatAwareArticleParser(
+//			XmlArticleParser.of(resourceFactory::image, resourceFactory::link),
+//			MDArticleParser.of(resourceFactory::image, resourceFactory::link)
+//		);
 		var queryService = new ArticleQuery(storage, parser::parse);
-		var renderer = Renderer.of(templater, clock, queryService, processingExecutor);
-		return new Pawgen(clock, processingExecutor, queryService, renderer, fsRegistry, storage, resourceFactory);
+		var renderer = Renderer.of(executor, templater, clock, queryService);
+		return new Pawgen(clock, executor, queryService, renderer, fsRegistry, storage, resourceFactory);
 	}
 
 	public Stream<DigestAwareResource> readOutputDir() {
@@ -78,29 +85,27 @@ public class Pawgen implements AutoCloseable {
 
 	@SneakyThrows
 	void renderInternal() {
-		processingExecutor.execute(this::copyFiles);
+		trackingExecutor.execute(this::copyFiles);
 		log.info("Finding articles to be processed.");
 		try (var headers = queryService.getArticles(Category.ROOT)) {
-			headers.map(renderer::create)
-				.forEach(Renderer.ArticleContext::render);
+			headers.map(renderer::create).forEach(Renderer.ArticleContext::renderAsync);
 		}
-		processingExecutor.waitAllExecuted();
+		trackingExecutor.waitRendered(Duration.of(30, MINUTES));
 		assert storage.assertChecksums() : "Some checksum are inconsistent";
-		storage.writeAliases(renderer.getAliases().toList());
+		storage.writeAliases(
+			renderer.getProcessed()
+				.flatMap(article -> article.getAliases().map(alias -> Map.entry(alias, article.getUrl())))
+				.distinct()::iterator
+		);
 	}
 
-	public Duration getImageProcessingTime() {
-		return resourceProcessor.getImageProcessingTime();
-	}
-
-	public Duration getCopyResourcesTime() {
-		return resourceProcessor.getResourceProcessingTime();
+	public Duration getResourceProcessingTime() {
+		return resourceProcessor.getProcessingTime();
 	}
 
 	@Override
 	@SneakyThrows
 	public void close() {
-		processingExecutor.close();
 		fsRegistry.close();
 	}
 

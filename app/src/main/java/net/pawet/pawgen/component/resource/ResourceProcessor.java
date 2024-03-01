@@ -1,8 +1,6 @@
 package net.pawet.pawgen.component.resource;
 
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Category;
 import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
@@ -17,9 +15,9 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.LongAccumulator;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
@@ -28,24 +26,19 @@ import static java.util.Optional.ofNullable;
 @Slf4j
 @RequiredArgsConstructor
 public final class ResourceProcessor {
-	private final LongAccumulator imgProcessingCounter = new LongAccumulator(Long::sum, 0);
-	private final LongAccumulator resProcessingCounter = new LongAccumulator(Long::sum, 0);
+	private final LongAccumulator processingCounter = new LongAccumulator(Long::sum, 0);
 	private final Clock clock = Clock.systemUTC();
 
 	private final Storage storage;
 	private final ProcessableImageFactory processableImageFactory;
 	private final Set<String> hosts;
 
-	@SneakyThrows
-	public Map<String, String> image(Category category, Map<String, String> attributes) {
+	public Map<String, String> attributes(Category category, Map<String, String> attributes) {
 		try {
-			return ofNullable(attributes.get("src"))
-				.map(this::handleLink)
-				.map(category::resolve)
-				.flatMap(storage::resource)
-				.map(resource -> processableImageFactory.create(resource, attributes))
-				.map(processable -> measured(processable, imgProcessingCounter::accumulate))
-				.map(ResourceProcessor::safeApply)
+			return link(category, attributes)
+				.or(() -> image(category, attributes))
+				.map(processable -> measured(processable, processingCounter::accumulate))
+				.map(this::safeApply)
 				.orElse(attributes);
 		} catch (Exception e) {
 			log.warn("Error while processing tag 'image' in '{}'", category, e);
@@ -53,24 +46,24 @@ public final class ResourceProcessor {
 		return attributes;
 	}
 
-	@SneakyThrows
-	public Map<String, String> link(Category category, Map<String, String> attributes) {
-		try {
-			return ofNullable(attributes.get("href"))
-				.map(this::handleLink)
-				.map(category::resolve)
-				.flatMap(storage::resource)
-				.map(resource -> createProcessable(attributes, resource))
-				.map(processable -> measured(processable, resProcessingCounter::accumulate))
-				.map(ResourceProcessor::safeApply)
-				.orElse(attributes);
-		} catch (Exception e) {
-			log.warn("Error while processing tag 'image' in '{}'", category, e);
-		}
-		return attributes;
+	private Optional<Supplier<Map<String, String>>> image(Category category, Map<String, String> attributes) {
+		return ofNullable(attributes.get("src"))
+			.map(this::handleLink)
+			.map(category::resolve)
+			.flatMap(storage::resource)
+			.map(resource -> processableImageFactory.create(resource, attributes));
+
 	}
 
-	private static Map<String, String> safeApply(Supplier<Map<String, String>> resource) {
+	private Optional<Supplier<Map<String, String>>> link(Category category, Map<String, String> attributes) {
+		return ofNullable(attributes.get("href"))
+			.map(this::handleLink)
+			.map(category::resolve)
+			.flatMap(storage::resource)
+			.map(resource -> createProcessable(attributes, resource));
+	}
+
+	private Map<String, String> safeApply(Supplier<Map<String, String>> resource) {
 		try {
 			return resource.get();
 		} catch (Exception e) {
@@ -99,12 +92,8 @@ public final class ResourceProcessor {
 		};
 	}
 
-	public Duration getImageProcessingTime() {
-		return Duration.ofMillis(imgProcessingCounter.get());
-	}
-
-	public Duration getResourceProcessingTime() {
-		return Duration.ofMillis(resProcessingCounter.get());
+	public Duration getProcessingTime() {
+		return Duration.ofMillis(processingCounter.get());
 	}
 
 	String handleLink(String urlStr) {

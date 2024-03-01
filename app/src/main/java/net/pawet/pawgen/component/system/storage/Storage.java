@@ -240,7 +240,7 @@ public class Storage {
 	}
 
 	@SneakyThrows
-	public void writeAliases(List<Entry<String, String>> aliases) {
+	public void writeAliases(Iterable<Entry<String, String>> aliases) {
 		Path destRedirects = outputDir.resolve(REDIRECTS_FILE);
 		try (var writer = newWriter(write(destRedirects), UTF_8)) {
 			if (userDefinedRedirects != null) {

@@ -36,8 +36,8 @@ public class Application {
 					.deployer(config.getDeployerNames())
 					.accept(files.toList());
 			}
-			log.info("Cleanup {}min, render {}min, img processing {}min, copy resources {}min, deploy {}min",
-				cleanupIn.toMinutes(), renderIn.toMinutes(), app.getImageProcessingTime().toMinutes(), app.getCopyResourcesTime().toMinutes(), Duration.ofMillis(CLOCK.millis() - startDeploy).toMinutes()
+			log.info("Cleanup {}min, render {}min, resource processing {}min, deploy {}min",
+				cleanupIn.toMinutes(), renderIn.toMinutes(), app.getResourceProcessingTime().toMinutes(), Duration.ofMillis(CLOCK.millis() - startDeploy).toMinutes()
 			);
 		} catch (Throwable e) {
 			log.error("Unrecoverable error: {}", e.getMessage(), e);

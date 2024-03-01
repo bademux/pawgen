@@ -16,7 +16,9 @@ pawet.net.zip
 *.log
 *.lck
 config.properties
-/simplelogger.properties
-/app/logging.properties
+simplelogger.properties
+logging.properties
 *.csv
 *.tsv
+.profileconfig.json
+profile.jfr

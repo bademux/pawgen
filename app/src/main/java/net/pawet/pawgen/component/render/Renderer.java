@@ -1,9 +1,6 @@
 package net.pawet.pawgen.component.render;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.ToString;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.Article;
 import net.pawet.pawgen.component.Category;
@@ -11,14 +8,17 @@ import net.pawet.pawgen.component.Category;
 import java.nio.file.FileAlreadyExistsException;
 import java.time.Clock;
 import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.Map.Entry;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static java.lang.Boolean.TRUE;
 import static java.time.ZoneOffset.UTC;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.*;
@@ -28,101 +28,85 @@ import static lombok.AccessLevel.PRIVATE;
 @RequiredArgsConstructor(staticName = "of")
 public class Renderer {
 
-	private final Set<Article> processedFiles = ConcurrentHashMap.newKeySet();
+	private final Map<Article, Boolean> processed = new ConcurrentHashMap<>();
+	private final Executor executor;
 	private final Templater templater;
 	private final Clock clock;
 	private final ArticleQuery queryService;
-	private final Executor executor;
+
 
 	public ArticleContext create(Article header) {
 		return new ArticleContext(header);
 	}
 
+	void renderAsync(ArticleContext context) {
+		log.trace("Rendering {}", context.article);
+		processed.computeIfAbsent(context.article, __ -> {
+			executor.execute(() -> render(context));
+			return TRUE;
+		});
+	}
+
+	public Stream<Article> getProcessed() {
+		return processed.keySet().stream();
+	}
+
 	@SneakyThrows
-	void render(ArticleContext context) {
+	private void render(ArticleContext context) {
 		try (var writer = context.article.writer()) {
-			templater.render(writer, context, context.article.readContent());
-			log.debug("Rendering: {}", context);
+			templater.render(writer, context, (Callable<CharSequence>) context.article::readContent);
+			log.debug("Rendering: {}", context.article);
 		} catch (FileAlreadyExistsException e) {
-			log.debug("Error while generating article {}.", context, e);
+			log.debug("Error while generating article {}.", context.article, e);
 		} catch (Exception e) {
-			log.error("Error while generating article {}.", context, e);
+			log.error("Error while generating article {}.", context.article, e);
 			throw e;
 		}
 	}
 
-	public Stream<Entry<String, String>> getAliases() {
-		return processedFiles.stream()
-			.flatMap(Renderer::getAliasPerArticleUrl)
-			.distinct();
-	}
-
-	private static Stream<Entry<String, String>> getAliasPerArticleUrl(Article article) {
-		String url = article.getUrl();
-		return article.getAliases().map(alias -> Map.entry(alias, url));
-	}
-
 	@ToString(onlyExplicitlyIncluded = true)
+	@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 	@RequiredArgsConstructor(access = PRIVATE)
 	public final class ArticleContext {
 
-		//TODO https://github.com/projectlombok/lombok/issues/3506  @Synchronized with ReentrantLock
-		private final ReentrantLock lock = new ReentrantLock();
 		@ToString.Include
+		@EqualsAndHashCode.Include
 		@Getter
 		private final Article article;
 
-		public void render() {
-			lock.lock();
-			try {
-				renderInternal();
-			} finally {
-				lock.unlock();
-			}
-		}
-
-		public void renderInternal() {
+		public void renderAsync() {
 			if (isLegacy()) {
 				log.debug("legacy article, skipping {}", article);
 				return;
 			}
 			log.trace("Rendering {}", article);
-			if (processedFiles.contains(article)) {
-				log.trace("Already processed, skipping {}", article);
-				return;
-			}
-			executor.execute(() -> Renderer.this.render(this));
-			processedFiles.add(article);
+			Renderer.this.renderAsync(this);
 		}
 
-		Iterator<ArticleContext> getOtherLangArticle() {
+		Stream<ArticleContext> getOtherLangArticle() {
 			return queryService.getArticles(article.getCategory())
 				.filter(not(article::isSameLang))
 				.map(Renderer.this::create)
-				.peek(ArticleContext::render)
-				.iterator();
+				.peek(ArticleContext::renderAsync);
 
 		}
 
-		Iterator<ArticleContext> getChildren() {
+		Stream<ArticleContext> getChildren() {
 			return queryService.getChildren(article.getCategory())
 				.map(Renderer.this::create)
-				.peek(ArticleContext::render)
-				.iterator();
+				.peek(ArticleContext::renderAsync);
 		}
 
-		Iterator<ArticleContext> getLatest() {
+		Stream<ArticleContext> getLatest() {
 			return queryService.getLast(article.getCategory(), clock.instant().atZone(UTC), 6)
-				.map(Renderer.this::create)
-				.peek(ArticleContext::render)
 				.limit(6)
-				.iterator();
+				.map(Renderer.this::create)
+				.peek(ArticleContext::renderAsync);
 		}
 
 		Optional<ArticleContext> getParent() {
 			return queryService.getParents(article.getCategory())
 				.map(Renderer.this::create)
-				.peek(ArticleContext::render)
 				.collect(collectingAndThen(toList(), this::chooseTheBestSuitableLang));
 		}
 
@@ -170,8 +154,8 @@ public class Renderer {
 			return article.getType();
 		}
 
-		Iterator<String> getAliases() {
-			return article.getAliases().iterator();
+		Stream<String> getAliases() {
+			return article.getAliases();
 		}
 
 		boolean isLegacy() {

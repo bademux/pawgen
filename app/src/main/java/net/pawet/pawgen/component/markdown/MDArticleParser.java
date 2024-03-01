@@ -13,9 +13,6 @@ import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.ext.image.attributes.ImageAttributesExtension;
 import org.commonmark.node.*;
 import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.AttributeProvider;
-import org.commonmark.renderer.html.AttributeProviderContext;
-import org.commonmark.renderer.html.AttributeProviderFactory;
 import org.commonmark.renderer.html.HtmlRenderer;
 
 import java.io.IOException;
@@ -28,6 +25,8 @@ import java.util.function.BiFunction;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.joining;
 import static lombok.AccessLevel.PROTECTED;
 
 @Slf4j
@@ -37,12 +36,17 @@ public final class MDArticleParser {
 	private final Parser parser;
 	private final HtmlRenderer renderer;
 
-	public static MDArticleParser of(BiFunction<Category, Map<String, String>, Map<String, String>> imageProcessor,
-									 BiFunction<Category, Map<String, String>, Map<String, String>> linkProcessor) {
+	public static MDArticleParser of(BiFunction<Category, Map<String, String>, Map<String, String>> attrsProcessor) {
 		var extensions = List.of(YamlFrontMatterExtension.create(), ImageAttributesExtension.create(), TablesExtension.create());
 		return new MDArticleParser(
 			Parser.builder().extensions(extensions).build(),
-			HtmlRenderer.builder().extensions(extensions).attributeProviderFactory(new ResourceAttributeProviderFactory(imageProcessor, linkProcessor)).build()
+			HtmlRenderer.builder().extensions(extensions)
+				.attributeProviderFactory(context -> (node, tagName, attrs) -> {
+					if (node instanceof Image || node instanceof Link) {
+						attrs.putAll(attrsProcessor.apply(AttachedData.findCategory(node), attrs));
+					}
+				})
+				.build()
 		);
 	}
 
@@ -84,16 +88,17 @@ public final class MDArticleParser {
 	}
 
 	private static void populateArticleProperties(YamlFrontMatterNode node, Article.ArticleBuilder articleBuilder) {
+        var stream = node.getValues().stream();
 		switch (node.getKey()) {
-			case "language" -> articleBuilder.lang(node.getValues().get(0));
-			case "type" -> articleBuilder.type(node.getValues().get(0));
-			case "title" -> articleBuilder.title(node.getValues().get(0));
-			case "author" -> articleBuilder.author(node.getValues().get(0));
-			case "date" -> articleBuilder.date(ISO_DATE_TIME.parse(node.getValues().get(0), ZonedDateTime::from));
-			case "source" -> articleBuilder.source(node.getValues().get(0));
-			case "file" -> articleBuilder.file(node.getValues().get(0));
-			case "aliases" -> articleBuilder.aliases(node.getValues());
-			default -> throw new IllegalArgumentException("Unknown article Frontmatter property: " + node.getKey());
+			case "language" -> stream.findAny().ifPresent(articleBuilder::lang);
+			case "type" -> stream.findAny().ifPresent(articleBuilder::type);
+			case "title" -> articleBuilder.title(stream.findAny().orElse(""));
+			case "authors" ->  stream.collect(collectingAndThen(joining(","), articleBuilder::author));
+			case "date" -> stream.findAny().map(date -> ISO_DATE_TIME.parse(date, ZonedDateTime::from)).ifPresent(articleBuilder::date);
+			case "source" -> stream.findAny().ifPresent(articleBuilder::source);
+			case "file" -> stream.findAny().ifPresent(articleBuilder::file);
+			case "aliases" -> stream.forEachOrdered(articleBuilder::alias);
+			default -> throw new IllegalArgumentException("Unknown article FrontMatter property: " + node.getKey());
 		}
 	}
 
@@ -108,29 +113,6 @@ public final class MDArticleParser {
 		renderer.render(doc, sb);
 		return sb;
 	}
-
-}
-
-@RequiredArgsConstructor(access = PROTECTED)
-final class ResourceAttributeProviderFactory implements AttributeProviderFactory {
-
-	private final BiFunction<Category, Map<String, String>, Map<String, String>> imageResourceProcessor;
-	private final BiFunction<Category, Map<String, String>, Map<String, String>> linkResourceProcessor;
-
-	private void attributeProviderSetAttributes(Node node, String tagName, Map<String, String> attrs) {
-		switch (node) {
-			case Image image -> attrs.putAll(imageResourceProcessor.apply(AttachedData.findCategory(image), attrs));
-			case Link link -> attrs.putAll(linkResourceProcessor.apply(AttachedData.findCategory(link), attrs));
-			default -> {
-			}
-		}
-	}
-
-	@Override
-	public AttributeProvider create(AttributeProviderContext __) {
-		return this::attributeProviderSetAttributes;
-	}
-
 }
 
 @RequiredArgsConstructor(access = PROTECTED)

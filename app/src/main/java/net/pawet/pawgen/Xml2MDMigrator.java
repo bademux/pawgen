@@ -1,5 +1,8 @@
 package net.pawet.pawgen;
 
+import com.vladsch.flexmark.html2md.converter.ExtensionConversion;
+import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
+import com.vladsch.flexmark.html2md.converter.HtmlNodeRendererHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -9,8 +12,7 @@ import net.pawet.pawgen.component.system.CliOptions;
 import net.pawet.pawgen.component.system.storage.FileSystemRegistry;
 import net.pawet.pawgen.component.system.storage.Storage;
 import net.pawet.pawgen.component.xml.XmlArticleParser;
-import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.HtmlRenderer;
+import org.jsoup.nodes.Element;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -21,9 +23,11 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter.EXT_TABLES;
 import static java.nio.file.Files.walk;
 import static java.util.function.Predicate.not;
 
@@ -70,21 +74,22 @@ public class Xml2MDMigrator {
 			createList(writer, "aliases", article.getAliases().toArray(String[]::new));
 			writer.write("---");
 			writer.newLine();
-			writer.append(convertMarkdownToHTML(article.readContent()));
+			convert(writer, article.readContent());
 		}
 	}
 
-	public static String convertMarkdownToHTML(String markdown) {
-		Parser parser = Parser.builder().build();
-		var document = parser.parse(markdown);
-		var htmlRenderer = HtmlRenderer.builder().build();
-		return htmlRenderer.render(document);
-	}
+	public static final Set<HtmlNodeRendererHandler<?>> HTML_NODE_RENDERER_HANDLERS = Set.of(new HtmlNodeRendererHandler<>("table", Element.class, (node, context, out) -> context.appendOuterHtml(node)));
 
+	@SneakyThrows
+	private static void convert(Appendable writer, CharSequence content) {
+		FlexmarkHtmlConverter.builder()
+			.htmlNodeRendererFactory(__ -> () -> HTML_NODE_RENDERER_HANDLERS)
+			.build().convert(content.toString(), writer);
+	}
 
 	private static String[] findAuthors(Article article) {
 		String author = article.getAuthor();
-		if(author == null || author.isBlank()) {
+		if (author == null || author.isBlank()) {
 			return new String[0];
 		}
 		String authorStr = author.trim();
@@ -94,7 +99,7 @@ public class Xml2MDMigrator {
 			.map(perLang::get)
 			.filter(Objects::nonNull)
 			.findFirst()
-			.orElse(new String[] {authorStr});
+			.orElse(new String[]{authorStr});
 	}
 
 	private static void createItem(BufferedWriter writer, String name, String value) throws IOException {

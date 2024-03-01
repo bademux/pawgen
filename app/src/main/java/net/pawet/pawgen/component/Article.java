@@ -67,7 +67,8 @@ public final class Article implements Comparable<Article> {
 	private final Collection<String> aliases;
 
 	@Builder
-	public static Article of(ArticleResource resource, Supplier<CharSequence> contentSupplier, String type, String lang, String title, String author, ZonedDateTime date, String source, String file, Collection<String> aliases) {
+	public static Article of(ArticleResource resource, Supplier<CharSequence> contentSupplier, String type, String lang, String title,
+							 String author, ZonedDateTime date, String source, String file,  @Singular Collection<String> aliases) {
 		return new Article(resource, contentSupplier, type, lang, title, author, date, source, file, aliases == null ? List.of() : aliases);
 	}
 

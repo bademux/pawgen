@@ -103,7 +103,7 @@ public final class XmlArticleParser {
 		var contentParser = new ContentParser((t, attrs1) -> switch (t) {
 			case "img" -> imageResourceProcessor.apply(category, attrs1);
 			case "a" -> linkResourceProcessor.apply(category, attrs1);
-			default -> Map.of();
+			default -> attrs1;
 		}
 		);
 		return Article.of(resource, () -> contentParser.read(resource.readable()),
