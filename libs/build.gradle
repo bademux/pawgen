@@ -1,5 +1,13 @@
-plugins {
-	id 'org.gradlex.extra-java-module-info' version '1.5' apply false
+//TODO: use directly when JPMS will be impl
+buildscript {
+	repositories {
+		maven {
+			url 'https://plugins.gradle.org/m2/'
+		}
+	}
+	dependencies {
+		classpath 'org.gradlex:extra-java-module-info:1.4'
+	}
 }
 
 //TODO: https://github.com/spullara/mustache.java/issues/289
@@ -38,8 +46,8 @@ project(':libs:mustache') {
 
 }
 
-//TODO: https://github.com/vsch/flexmark-java/issues/571
-project(':libs:flexmark') {
+//TODO: https://github.com/commonmark/commonmark-java/issues/125
+project(':libs:commonmark') {
 	apply plugin: 'java'
 	apply plugin: 'org.gradlex.extra-java-module-info'
 
@@ -49,65 +57,37 @@ project(':libs:flexmark') {
 			canBeResolved = false
 		}
 	}
-	version flexmarkVersion
+	version commonmarkVersion
 
 	dependencies {
-		implementation group: 'com.vladsch.flexmark', name: 'flexmark', version: flexmarkVersion
-		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-yaml-front-matter', version: flexmarkVersion
-		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-attributes', version: flexmarkVersion
-		implementation group: 'com.vladsch.flexmark', name: 'flexmark-html2md-converter', version: flexmarkVersion
-		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-tables', version: flexmarkVersion
-		implementation group: 'com.vladsch.flexmark', name: 'flexmark-ext-emoji', version: flexmarkVersion
+		implementation platform(group: 'org.commonmark', name: 'commonmark-parent', version: commonmarkVersion)
+		implementation group: 'org.commonmark', name: 'commonmark'
+		implementation group: 'org.commonmark', name: 'commonmark-ext-yaml-front-matter'
+		implementation group: 'org.commonmark', name: 'commonmark-ext-image-attributes'
+		implementation group: 'org.commonmark', name: 'commonmark-ext-gfm-tables'
 	}
 
 
 	extraJavaModuleInfo {
 		failOnMissingModuleInfo = true
-		module('com.vladsch.flexmark:flexmark', 'flexmark') {
-			mergeJar('com.vladsch.flexmark:flexmark-util')
-			mergeJar('com.vladsch.flexmark:flexmark-util-format')
-			mergeJar('com.vladsch.flexmark:flexmark-util-ast')
-			mergeJar('com.vladsch.flexmark:flexmark-util-builder')
-			mergeJar('com.vladsch.flexmark:flexmark-util-dependency')
-			mergeJar('com.vladsch.flexmark:flexmark-util-html')
-			mergeJar('com.vladsch.flexmark:flexmark-util-options')
-			mergeJar('com.vladsch.flexmark:flexmark-util-sequence')
-			mergeJar('com.vladsch.flexmark:flexmark-util-collection')
-			mergeJar('com.vladsch.flexmark:flexmark-util-data')
-			mergeJar('com.vladsch.flexmark:flexmark-util-misc')
-			mergeJar('com.vladsch.flexmark:flexmark-util-visitor')
-			mergeJar('com.vladsch.flexmark:flexmark-ext-yaml-front-matter')
-			mergeJar('com.vladsch.flexmark:flexmark-ext-attributes')
-			mergeJar('com.vladsch.flexmark:flexmark-ext-tables')
-			mergeJar('com.vladsch.flexmark:flexmark-html2md-converter')
-			mergeJar('com.vladsch.flexmark:flexmark-ext-emoji')
-			mergeJar('com.vladsch.flexmark:flexmark-jira-converter')
-			mergeJar('com.vladsch.flexmark:flexmark-ext-gfm-strikethrough')
-			mergeJar('com.vladsch.flexmark:flexmark-ext-wikilink')
-			mergeJar('com.vladsch.flexmark:flexmark-ext-ins')
-			mergeJar('com.vladsch.flexmark:flexmark-ext-superscript')
-			mergeJar('com.vladsch.flexmark:flexmark-html2md-converter')
-			mergeJar('org.jsoup:jsoup') //used by html2md-converter
+		module('org.commonmark:commonmark', 'commonmark') {
+			mergeJar('org.commonmark:commonmark-ext-yaml-front-matter')
+			mergeJar('org.commonmark:commonmark-ext-image-attributes')
+			mergeJar('org.commonmark:commonmark-ext-gfm-tables')
 
-			exports 'com.vladsch.flexmark.ext.attributes'
-			exports 'com.vladsch.flexmark.ext.yaml.front.matter'
-			exports 'com.vladsch.flexmark.util.html'
-			exports 'com.vladsch.flexmark.util.sequence'
-			exports 'com.vladsch.flexmark.util.ast'
-			exports 'com.vladsch.flexmark.util.data'
-			exports 'com.vladsch.flexmark.ast'
-			exports 'com.vladsch.flexmark.html'
-			exports 'com.vladsch.flexmark.html.renderer'
-			exports 'com.vladsch.flexmark.parser'
-			exports 'com.vladsch.flexmark.parser.block'
-			exports 'com.vladsch.flexmark.util.misc'
-			exports 'com.vladsch.flexmark.html2md.converter'
+			exports 'org.commonmark.node'
+			exports 'org.commonmark.parser'
+			exports 'org.commonmark.renderer'
+			exports 'org.commonmark.renderer.html'
+			exports 'org.commonmark.ext.front.matter'
+			exports 'org.commonmark.ext.image.attributes'
+			exports 'org.commonmark.ext.gfm.tables'
 		}
 	}
 
 	artifacts {
 		moduleJar configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
-			.find({ it.moduleVersion.id.name == 'flexmark' })
+			.find({ it.moduleVersion.id.name == 'commonmark' })
 			.file
 	}
 

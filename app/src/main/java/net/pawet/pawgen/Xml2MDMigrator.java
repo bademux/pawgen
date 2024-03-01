@@ -1,6 +1,5 @@
 package net.pawet.pawgen;
 
-import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +9,8 @@ import net.pawet.pawgen.component.system.CliOptions;
 import net.pawet.pawgen.component.system.storage.FileSystemRegistry;
 import net.pawet.pawgen.component.system.storage.Storage;
 import net.pawet.pawgen.component.xml.XmlArticleParser;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -23,9 +24,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.vladsch.flexmark.html2md.converter.ExtensionConversion.HTML;
-import static com.vladsch.flexmark.html2md.converter.ExtensionConversion.TEXT;
-import static com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter.EXT_TABLES;
 import static java.nio.file.Files.walk;
 import static java.util.function.Predicate.not;
 
@@ -72,24 +70,21 @@ public class Xml2MDMigrator {
 			createList(writer, "aliases", article.getAliases().toArray(String[]::new));
 			writer.write("---");
 			writer.newLine();
-			CharSequence content = article.readContent();
-			convert(content, writer);
+			writer.append(convertMarkdownToHTML(article.readContent()));
 		}
 	}
 
-	private static void convert(CharSequence content, Appendable writer) throws IOException {
-		String html = String.valueOf(content);
-		if(html.contains("<table")) {
-			writer.append(html);
-			return;
-		}
-		FlexmarkHtmlConverter.builder().build().convert(html, writer);
+	public static String convertMarkdownToHTML(String markdown) {
+		Parser parser = Parser.builder().build();
+		var document = parser.parse(markdown);
+		var htmlRenderer = HtmlRenderer.builder().build();
+		return htmlRenderer.render(document);
 	}
 
 
 	private static String[] findAuthors(Article article) {
 		String author = article.getAuthor();
-		if (author == null || author.isBlank()) {
+		if(author == null || author.isBlank()) {
 			return new String[0];
 		}
 		String authorStr = author.trim();
@@ -99,7 +94,7 @@ public class Xml2MDMigrator {
 			.map(perLang::get)
 			.filter(Objects::nonNull)
 			.findFirst()
-			.orElse(new String[]{authorStr});
+			.orElse(new String[] {authorStr});
 	}
 
 	private static void createItem(BufferedWriter writer, String name, String value) throws IOException {
