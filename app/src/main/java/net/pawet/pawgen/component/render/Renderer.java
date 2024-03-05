@@ -14,7 +14,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -28,8 +27,7 @@ import static lombok.AccessLevel.PRIVATE;
 @RequiredArgsConstructor(staticName = "of")
 public class Renderer {
 
-	private final Map<Article, Boolean> processed = new ConcurrentHashMap<>();
-	private final Executor executor;
+	private final Map<Article, Boolean> rendered = new ConcurrentHashMap<>();
 	private final Templater templater;
 	private final Clock clock;
 	private final ArticleQuery queryService;
@@ -39,20 +37,13 @@ public class Renderer {
 		return new ArticleContext(header);
 	}
 
-	void renderAsync(ArticleContext context) {
-		log.trace("Rendering {}", context.article);
-		processed.computeIfAbsent(context.article, __ -> {
-			executor.execute(() -> render(context));
-			return TRUE;
-		});
-	}
-
-	public Stream<Article> getProcessed() {
-		return processed.keySet().stream();
+	public Stream<Article> getRendered() {
+		return rendered.keySet().stream();
 	}
 
 	@SneakyThrows
-	private void render(ArticleContext context) {
+	final void renderInternal(ArticleContext context) {
+		log.trace("Rendering {}", context.article);
 		try (var writer = context.article.writer()) {
 			templater.render(writer, context, (Callable<CharSequence>) context.article::readContent);
 			log.debug("Rendering: {}", context.article);
@@ -74,40 +65,32 @@ public class Renderer {
 		@Getter
 		private final Article article;
 
-		public void renderAsync() {
+		public void render() {
 			if (isLegacy()) {
 				log.debug("legacy article, skipping {}", article);
 				return;
 			}
-			log.trace("Rendering {}", article);
-			Renderer.this.renderAsync(this);
+			rendered.computeIfAbsent(article, __ -> {
+				renderInternal(this);
+				return TRUE;
+			});
 		}
 
 		Stream<ArticleContext> getOtherLangArticle() {
-			return queryService.getArticles(article.getCategory())
-				.filter(not(article::isSameLang))
-				.map(Renderer.this::create)
-				.peek(ArticleContext::renderAsync);
+			return queryService.getArticles(article.getCategory()).filter(not(article::isSameLang)).map(Renderer.this::create);
 
 		}
 
 		Stream<ArticleContext> getChildren() {
-			return queryService.getChildren(article.getCategory())
-				.map(Renderer.this::create)
-				.peek(ArticleContext::renderAsync);
+			return queryService.getChildren(article.getCategory()).map(Renderer.this::create);
 		}
 
 		Stream<ArticleContext> getLatest() {
-			return queryService.getLast(article.getCategory(), clock.instant().atZone(UTC), 6)
-				.limit(6)
-				.map(Renderer.this::create)
-				.peek(ArticleContext::renderAsync);
+			return queryService.getLast(article.getCategory(), clock.instant().atZone(UTC), 6).limit(6).map(Renderer.this::create);
 		}
 
 		Optional<ArticleContext> getParent() {
-			return queryService.getParents(article.getCategory())
-				.map(Renderer.this::create)
-				.collect(collectingAndThen(toList(), this::chooseTheBestSuitableLang));
+			return queryService.getParents(article.getCategory()).map(Renderer.this::create).collect(collectingAndThen(toList(), this::chooseTheBestSuitableLang));
 		}
 
 		String relativize(String value) {

@@ -12,7 +12,7 @@ import java.util.concurrent.ThreadFactory;
 
 @Slf4j
 @RequiredArgsConstructor
-public class TrackingExecutor implements Executor{
+public class TrackingExecutor implements Executor {
 
 	private final CountingLatch countingLatch = new CountingLatch(0);
 	private final ThreadFactory threadFactory;

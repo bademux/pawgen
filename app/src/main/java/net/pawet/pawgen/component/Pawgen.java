@@ -5,9 +5,9 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.pawet.pawgen.component.markdown.MDArticleParser;
 import net.pawet.pawgen.component.render.ArticleQuery;
-import net.pawet.pawgen.component.render.TrackingExecutor;
 import net.pawet.pawgen.component.render.Renderer;
 import net.pawet.pawgen.component.render.Templater;
+import net.pawet.pawgen.component.render.TrackingExecutor;
 import net.pawet.pawgen.component.resource.ResourceProcessor;
 import net.pawet.pawgen.component.resource.img.ProcessableImageFactory;
 import net.pawet.pawgen.component.resource.img.WatermarkFilterFactory;
@@ -51,12 +51,8 @@ public class Pawgen implements AutoCloseable {
 		var executor = new TrackingExecutor(threadFactory);
 		var templater = Templater.of(storage::readFromInput, fsRegistry.getPathFsRegistration(opts.getTemplatesUri()), executor);
 		var parser = MDArticleParser.of(resourceFactory::attributes);
-//		var parser = new FormatAwareArticleParser(
-//			XmlArticleParser.of(resourceFactory::image, resourceFactory::link),
-//			MDArticleParser.of(resourceFactory::image, resourceFactory::link)
-//		);
 		var queryService = new ArticleQuery(storage, parser::parse);
-		var renderer = Renderer.of(executor, templater, clock, queryService);
+		var renderer = Renderer.of(templater, clock, queryService);
 		return new Pawgen(clock, executor, queryService, renderer, fsRegistry, storage, resourceFactory);
 	}
 
@@ -88,12 +84,12 @@ public class Pawgen implements AutoCloseable {
 		trackingExecutor.execute(this::copyFiles);
 		log.info("Finding articles to be processed.");
 		try (var headers = queryService.getArticles(Category.ROOT)) {
-			headers.map(renderer::create).forEach(Renderer.ArticleContext::renderAsync);
+			headers.map(renderer::create).forEach(Renderer.ArticleContext::render);
 		}
 		trackingExecutor.waitRendered(Duration.of(30, MINUTES));
 		assert storage.assertChecksums() : "Some checksum are inconsistent";
 		storage.writeAliases(
-			renderer.getProcessed()
+			renderer.getRendered()
 				.flatMap(article -> article.getAliases().map(alias -> Map.entry(alias, article.getUrl())))
 				.distinct()::iterator
 		);

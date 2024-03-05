@@ -32,11 +32,11 @@ public class Templater {
 
 	private final Mustache mustache;
 
-	public static Templater of(@NonNull Function<String, ReadableByteChannel> resourceReader, @NonNull Path templateDir, @NonNull Executor executorService) {
+	public static Templater of(@NonNull Function<String, ReadableByteChannel> resourceReader, @NonNull Path templateDir, @NonNull Executor executor) {
 		MustacheResolver mustacheResolver = ((Function<String, Path>) templateDir::resolve).andThen(Templater::resolveTemplate)::apply;
 		var mf = new DefaultMustacheFactory(mustacheResolver);
-		mf.setObjectHandler(new PawgenObjectHandler(resourceReader));
-		mf.setExecutorService(new ExecutorServiceAdapter(executorService));
+		mf.setObjectHandler(new PawgenObjectHandler(resourceReader, executor));
+		mf.setExecutorService(new ExecutorServiceAdapter(executor));
 		return new Templater(mf.compile(TEMPLATE_NAME + DEFAULT_EXT));
 	}
 
@@ -55,6 +55,16 @@ public class Templater {
 final class PawgenObjectHandler extends BaseObjectHandler {
 
 	private final Function<String, ReadableByteChannel> resourceReader;
+	private final Executor executor;
+
+	@Override
+	public Object coerce(Object object) {
+		if (object instanceof ArticleContext c) {
+			executor.execute(c::render);
+			return c;
+		}
+		return super.coerce(object);
+	}
 
 	@Override
 	public Wrapper find(String name, List<Object> scopes) {
@@ -112,7 +122,7 @@ final class PawgenObjectHandler extends BaseObjectHandler {
 			case "source" -> context.getSource();
 			case "title" -> context.getTitle();
 			case "type" -> context.getType();
-			case "aliases" -> context.getAliases().toList();
+			case "aliases" -> context.getAliases().iterator();
 			case "url" -> context.getUrl();
 			case "children" -> context.getChildren().iterator();
 			case "hasChildren" -> context.getChildren().findAny().isPresent();
